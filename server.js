@@ -1,0 +1,1967 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+const db = require('./db');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// Static files
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+
+// Multer Storage Configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let uploadDir = path.join(__dirname, 'public', 'uploads');
+    if ((req.baseUrl && req.baseUrl.includes('committee')) || 
+        (req.originalUrl && req.originalUrl.includes('committee')) || 
+        (req.path && req.path.includes('committee'))) {
+      uploadDir = path.join(__dirname, 'public', 'uploads', 'committee');
+    }
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Audit log helper
+function logAudit(userId, userName, action, module, recordId, details, req) {
+  try {
+    const ip = req ? (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '') : 'SYSTEM';
+    const timestamp = new Date().toISOString();
+    const detailsStr = typeof details === 'object' ? JSON.stringify(details) : String(details || '');
+    db.run(
+      `INSERT INTO audit_logs (user_id, user_name, action, module, record_id, details, ip_address, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [String(userId || 'system'), String(userName || 'System'), action, module, String(recordId || ''), detailsStr, ip, timestamp]
+    );
+  } catch (err) {
+    console.error('[Audit Error]', err);
+  }
+}
+
+// Convert English numbers to Bengali numerals for UI formatting
+function toBengaliNumeral(num) {
+  if (num === null || num === undefined) return '০';
+  const bn = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return String(num).replace(/[0-9]/g, w => bn[+w]);
+}
+
+// Helper: Get Asia/Dhaka Today in YYYY-MM-DD
+function getDhakaDateStr(dateObj = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Dhaka',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(dateObj);
+  return parts; // 'YYYY-MM-DD'
+}
+
+// Helper: Add days to YYYY-MM-DD
+function addDaysToDateStr(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + parseInt(days, 10));
+  return d.toISOString().split('T')[0];
+}
+
+// Helper: Calculate difference in days between two YYYY-MM-DD strings
+function getDaysDiff(futureDateStr, todayDateStr) {
+  const d1 = new Date(futureDateStr + 'T00:00:00Z');
+  const d2 = new Date(todayDateStr + 'T00:00:00Z');
+  const diffTime = d1 - d2;
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+}
+
+// -------------------------------------------------------------
+// Scheduled & On-Demand 3-Day Repayment Reminder Check
+// -------------------------------------------------------------
+function checkRepaymentReminders() {
+  try {
+    const todayStr = getDhakaDateStr();
+    const activeLoans = db.query(
+      `SELECT l.*, a.name_bn as applicant_name, a.mobile as applicant_mobile
+       FROM loans l
+       JOIN applicants a ON l.applicant_id = a.id
+       WHERE l.loan_status IN ('সক্রিয়', 'মেয়াদোত্তীর্ণ') AND l.outstanding_principal > 0`
+    );
+
+    let remindersCreated = 0;
+    let overdueCount = 0;
+
+    for (const loan of activeLoans) {
+      const daysRemaining = getDaysDiff(loan.due_date, todayStr);
+
+      if (daysRemaining === 3) {
+        // Exactly 3 days remaining!
+        const existingNotif = db.get(
+          `SELECT id FROM notifications 
+           WHERE loan_id = ? AND type = 'repayment_reminder_3days' AND scheduled_date = ?`,
+          [loan.id, todayStr]
+        );
+        if (!existingNotif) {
+          db.run(
+            `INSERT INTO notifications (type, loan_id, applicant_name, title_bn, message_bn, scheduled_date, channel, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+            [
+              'repayment_reminder_3days',
+              loan.id,
+              loan.applicant_name,
+              'আসন্ন ধার ফেরতের তাগিদ (৩ দিন বাকি)',
+              `গ্রহীতা: ${loan.applicant_name}, ধার আইডি: ${loan.id}, বকেয়া মূলধন: ৳${loan.outstanding_principal}। ফেরতের নির্ধারিত তারিখ: ${loan.due_date}। আর ৩ দিন বাকি আছে।`,
+              todayStr,
+              'dashboard'
+            ]
+          );
+          remindersCreated++;
+        }
+      } else if (daysRemaining === 0) {
+        // Today is the due date!
+        const existingNotif = db.get(
+          `SELECT id FROM notifications 
+           WHERE loan_id = ? AND type = 'repayment_due_today' AND scheduled_date = ?`,
+          [loan.id, todayStr]
+        );
+        if (!existingNotif) {
+          db.run(
+            `INSERT INTO notifications (type, loan_id, applicant_name, title_bn, message_bn, scheduled_date, channel, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+            [
+              'repayment_due_today',
+              loan.id,
+              loan.applicant_name,
+              'আজ ধার ফেরতের নির্ধারিত তারিখ',
+              `আজ ${loan.applicant_name}-এর ধার আইডি ${loan.id}-এর নির্ধারিত ফেরতের তারিখ। বকেয়া: ৳${loan.outstanding_principal}। যোগাযোগ: ${loan.applicant_mobile}।`,
+              todayStr,
+              'dashboard'
+            ]
+          );
+          remindersCreated++;
+        }
+      } else if (daysRemaining < 0) {
+        // Overdue!
+        const overdueDays = Math.abs(daysRemaining);
+        if (loan.loan_status !== 'মেয়াদোত্তীর্ণ') {
+          db.run(`UPDATE loans SET loan_status = 'মেয়াদোত্তীর্ণ' WHERE id = ?`, [loan.id]);
+        }
+        const existingNotif = db.get(
+          `SELECT id FROM notifications 
+           WHERE loan_id = ? AND type = 'loan_overdue' AND scheduled_date = ?`,
+          [loan.id, todayStr]
+        );
+        if (!existingNotif) {
+          db.run(
+            `INSERT INTO notifications (type, loan_id, applicant_name, title_bn, message_bn, scheduled_date, channel, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+            [
+              'loan_overdue',
+              loan.id,
+              loan.applicant_name,
+              'মেয়াদোত্তীর্ণ ধার সতর্কবার্তা (জরুরি)',
+              `সতর্কবার্তা! ধার আইডি: ${loan.id}, গ্রহীতা: ${loan.applicant_name}। নির্ধারিত তারিখ ছিল ${loan.due_date}। ইতোমধ্যে ${overdueDays} দিন মেয়াদোত্তীর্ণ হয়েছে। বকেয়া: ৳${loan.outstanding_principal}।`,
+              todayStr,
+              'dashboard'
+            ]
+          );
+          remindersCreated++;
+        }
+        overdueCount++;
+      }
+    }
+
+    return { success: true, todayStr, activeLoansCount: activeLoans.length, remindersCreated, overdueCount };
+  } catch (err) {
+    console.error('[Notification Check Error]', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// Run check on startup and schedule hourly interval
+setInterval(checkRepaymentReminders, 60 * 60 * 1000);
+
+// =============================================================
+// API ROUTES
+// =============================================================
+
+// 1. Organization Settings
+app.get('/api/settings', (req, res) => {
+  try {
+    const settings = db.get('SELECT * FROM organization_settings WHERE id = 1');
+    res.json({ success: true, data: settings });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/settings', (req, res) => {
+  try {
+    const s = req.body;
+    db.run(
+      `UPDATE organization_settings SET
+        name_bn = ?, name_en = ?, slogan_bn = ?, location = ?, address = ?,
+        chairman_name = ?, chairman_title = ?, phone = ?, phone_verified_warning = ?,
+        whatsapp = ?, bkash_number = ?, email = ?, bkash_instructions = ?,
+        allow_public_registration = ?, updated_at = datetime('now')
+       WHERE id = 1`,
+      [
+        s.name_bn, s.name_en, s.slogan_bn, s.location, s.address,
+        s.chairman_name, s.chairman_title, s.phone, s.phone_verified_warning ? 1 : 0,
+        s.whatsapp, s.bkash_number, s.email, s.bkash_instructions,
+        s.allow_public_registration ? 1 : 0
+      ]
+    );
+
+    logAudit(req.body.user_id || 'admin', req.body.user_name || 'Admin', 'UPDATE', 'settings', '1', 'Organization settings updated', req);
+    res.json({ success: true, message: 'সংস্থার তথ্য সফলভাবে হালনাগাদ করা হয়েছে।' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Authentication
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'ব্যবহারকারীর নাম ও পাসওয়ার্ড প্রদান করুন।' });
+    }
+
+    const user = db.get('SELECT * FROM users WHERE username = ? AND is_active = 1', [username.trim()]);
+    if (!user || user.password_hash !== password.trim()) {
+      return res.status(401).json({ success: false, message: 'ব্যবহারকারীর নাম বা পাসওয়ার্ড সঠিক নয়।' });
+    }
+
+    logAudit(user.id, user.full_name_bn, 'LOGIN', 'auth', user.id, `User logged in: ${user.username}`, req);
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        full_name_bn: user.full_name_bn,
+        role: user.role,
+        email: user.email
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper to verify Admin / Super Admin permission
+function isSuperAdminUser(req) {
+  const role = req.headers['x-user-role'] || req.body?.user_role || (req.query && req.query.user_role);
+  const userId = req.headers['x-user-id'] || req.body?.user_id || (req.query && req.query.user_id);
+  if (role === 'superadmin' || role === 'admin') return true;
+  if (userId) {
+    const u = db.get('SELECT role FROM users WHERE id = ? OR username = ?', [userId, userId]);
+    if (u && (u.role === 'superadmin' || u.role === 'admin')) return true;
+  }
+  // Allow if admin username provided
+  if (userId === 'admin' || userId === 'USR-001' || userId === 'Shahalam69' || String(userId) === '1') return true;
+  return false;
+}
+
+// Committee Members Management (Super Admin Control & Public/Dashboard Display)
+app.get('/api/committee', (req, res) => {
+  try {
+    const members = db.query('SELECT * FROM committee_members WHERE is_active = 1 ORDER BY display_order ASC, id ASC');
+    res.json({ success: true, data: members });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/committee', upload.single('photo'), (req, res) => {
+  try {
+    if (!isSuperAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'কমিটি সদস্য সংযোজন বা পরিবর্তনের ক্ষমতা কেবল সুপার এডমিনের (Super Admin) হাতে সংরক্ষিত।' });
+    }
+
+    const { name_bn, name_en, designation_bn, mobile, email, bio_bn, display_order, user_id, user_name } = req.body;
+    if (!name_bn || !designation_bn) {
+      return res.status(400).json({ success: false, message: 'সদস্যের নাম ও পদবি প্রদান করুন।' });
+    }
+
+    const photoUrl = req.file ? '/uploads/committee/' + req.file.filename : (req.body.photo_url || '');
+
+    db.run(
+      `INSERT INTO committee_members (name_bn, name_en, designation_bn, mobile, email, photo_url, bio_bn, display_order, is_active, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))`,
+      [
+        name_bn.trim(), name_en || '', designation_bn.trim(),
+        mobile || '', email || '', photoUrl, bio_bn || '',
+        parseInt(display_order, 10) || 10
+      ]
+    );
+
+    logAudit(user_id || 'admin', user_name || 'Super Admin', 'CREATE', 'committee', name_bn, `Added committee member: ${name_bn} (${designation_bn})`, req);
+    res.json({ success: true, message: 'কমিটি সদস্য সফলভাবে যুক্ত করা হয়েছে।', photoUrl });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/committee/:id', upload.single('photo'), (req, res) => {
+  try {
+    if (!isSuperAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'কমিটি সদস্য পরিবর্তনের ক্ষমতা কেবল সুপার এডমিনের (Super Admin) হাতে সংরক্ষিত।' });
+    }
+
+    const { name_bn, name_en, designation_bn, mobile, email, bio_bn, display_order, user_id, user_name } = req.body;
+    const memberId = parseInt(req.params.id, 10);
+    const existing = db.get('SELECT * FROM committee_members WHERE id = ?', [memberId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'সদস্য খুঁজে পাওয়া যায়নি।' });
+    }
+
+    const photoUrl = req.file ? '/uploads/committee/' + req.file.filename : (req.body.photo_url || existing.photo_url);
+
+    db.run(
+      `UPDATE committee_members SET
+        name_bn = ?, name_en = ?, designation_bn = ?, mobile = ?, email = ?,
+        photo_url = ?, bio_bn = ?, display_order = ?
+       WHERE id = ?`,
+      [
+        name_bn ? name_bn.trim() : existing.name_bn,
+        name_en !== undefined ? name_en : existing.name_en,
+        designation_bn ? designation_bn.trim() : existing.designation_bn,
+        mobile !== undefined ? mobile : existing.mobile,
+        email !== undefined ? email : existing.email,
+        photoUrl,
+        bio_bn !== undefined ? bio_bn : existing.bio_bn,
+        parseInt(display_order, 10) || existing.display_order,
+        memberId
+      ]
+    );
+
+    logAudit(user_id || 'admin', user_name || 'Super Admin', 'UPDATE', 'committee', String(memberId), `Updated committee member: ${name_bn || existing.name_bn}`, req);
+    res.json({ success: true, message: 'কমিটি সদস্যের তথ্য সফলভাবে হালনাগাদ করা হয়েছে।', photoUrl });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/committee/:id', (req, res) => {
+  try {
+    if (!isSuperAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'কমিটি সদস্য অপসারণের ক্ষমতা কেবল সুপার এডমিনের (Super Admin) হাতে সংরক্ষিত।' });
+    }
+
+    const memberId = parseInt(req.params.id, 10);
+    const existing = db.get('SELECT * FROM committee_members WHERE id = ?', [memberId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'সদস্য খুঁজে পাওয়া যায়নি।' });
+    }
+
+    db.run('DELETE FROM committee_members WHERE id = ?', [memberId]);
+    logAudit(req.query.user_id || req.headers['x-user-id'] || 'admin', req.query.user_name || 'Super Admin', 'DELETE', 'committee', String(memberId), `Deleted committee member: ${existing.name_bn}`, req);
+    res.json({ success: true, message: 'কমিটি সদস্য সফলভাবে অপসারিত হয়েছে।' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Database Backup Download Endpoint (One-Click Safe Download)
+app.get(['/api/system/backup', '/api/admin/download-backup'], (req, res) => {
+  try {
+    db.saveDbToDisk();
+    const dbPath = path.join(__dirname, 'data', 'korje_hasena.sqlite');
+    if (!fs.existsSync(dbPath)) {
+      return res.status(404).json({ success: false, message: 'ডেটাবেজ ফাইল পাওয়া যায়নি।' });
+    }
+    const filename = `korje_hasena_backup_${new Date().toISOString().split('T')[0]}.sqlite`;
+    res.download(dbPath, filename);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Database Restore Endpoint
+app.post(['/api/system/restore', '/api/admin/restore-backup'], upload.single('backup'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'অনুগ্রহ করে একটি বৈধ .sqlite ব্যাকআপ ফাইল নির্বাচন করুন।' });
+    }
+    const buffer = fs.readFileSync(req.file.path);
+    db.restoreDbFromBuffer(buffer);
+    fs.unlinkSync(req.file.path);
+    res.json({ success: true, message: 'ডেটাবেজ সফলভাবে রিস্টোর করা হয়েছে!' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Instant Snapshot Creation Endpoint
+app.post('/api/admin/create-snapshot', (req, res) => {
+  try {
+    db.saveDbToDisk();
+    const backupDir = path.join(__dirname, 'data', 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const dest = path.join(backupDir, `korje_hasena_snapshot_${timestamp}.sqlite`);
+    const dbPath = path.join(__dirname, 'data', 'korje_hasena.sqlite');
+    fs.copyFileSync(dbPath, dest);
+
+    res.json({ success: true, message: 'নতুন নিরাপদ স্ন্যাপশট ব্যাকআপ সফলভাবে তৈরি হয়েছে।', file: dest });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Public API
+app.get('/api/public/summary', (req, res) => {
+  try {
+    const donorsCount = db.get('SELECT COUNT(*) as c FROM donors WHERE status = "active"')?.c || 0;
+    const donationsTotal = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE status = "নিশ্চিত"')?.s || 0;
+    const loansDisbursed = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans')?.s || 0;
+    const loansRepaid = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans')?.s || 0;
+    const activeBeneficiaries = db.get('SELECT COUNT(DISTINCT applicant_id) as c FROM loans WHERE loan_status IN ("সক্রিয়", "মেয়াদোত্তীর্ণ")')?.c || 0;
+    const completedLoans = db.get('SELECT COUNT(*) as c FROM loans WHERE loan_status = "সম্পূর্ণ পরিশোধিত"')?.c || 0;
+
+    res.json({
+      success: true,
+      data: {
+        donorsCount,
+        donationsTotal,
+        loansDisbursed,
+        loansRepaid,
+        activeBeneficiaries,
+        completedLoans
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Public Submit bKash Send Money Payment Confirmation
+app.post('/api/public/submit-payment', upload.single('screenshot'), (req, res) => {
+  try {
+    const { donor_name, donor_mobile, bkash_number_used, sender_bkash_mobile, transaction_id, amount, fund_category, payment_date, notes } = req.body;
+
+    if (!donor_name || !donor_mobile || !transaction_id || !amount) {
+      return res.status(400).json({ success: false, message: 'অনুগ্রহ করে সকল প্রয়োজনীয় তথ্য পূরণ করুন।' });
+    }
+
+    const cleanTrx = transaction_id.trim().toUpperCase();
+
+    // Check duplicate TrxID in submissions or existing donations
+    const existingSub = db.get('SELECT id FROM payment_submissions WHERE transaction_id = ?', [cleanTrx]);
+    const existingDon = db.get('SELECT id FROM donations WHERE transaction_reference = ?', [cleanTrx]);
+
+    if (existingSub || existingDon) {
+      return res.status(409).json({
+        success: false,
+        message: 'এই ট্রানজ্যাকশন আইডি (TrxID) ইতিপূর্বে জমা দেওয়া হয়েছে। একই ট্রানজ্যাকশন একাধিকবার গ্রহণযোগ্য নয়।'
+      });
+    }
+
+    const newId = 'PAY-SUB-' + Date.now().toString().slice(-6);
+    const screenshotPath = req.file ? '/uploads/' + req.file.filename : null;
+
+    db.run(
+      `INSERT INTO payment_submissions (
+        id, donor_name, donor_mobile, bkash_number_used, sender_bkash_mobile,
+        transaction_id, amount, fund_category, payment_date, screenshot_path, notes,
+        verification_status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'অপেক্ষমাণ', datetime('now'))`,
+      [
+        newId,
+        donor_name.trim(),
+        donor_mobile.trim(),
+        bkash_number_used || '01966442769',
+        sender_bkash_mobile || '',
+        cleanTrx,
+        parseFloat(amount),
+        fund_category || 'সাধারণ অনুদান',
+        payment_date || getDhakaDateStr(),
+        screenshotPath,
+        notes || ''
+      ]
+    );
+
+    // Notify admin
+    db.run(
+      `INSERT INTO notifications (type, applicant_name, title_bn, message_bn, scheduled_date, channel, created_at)
+       VALUES (?, ?, ?, ?, ?, 'dashboard', datetime('now'))`,
+      [
+        'new_bkash_payment',
+        donor_name,
+        'নতুন বিকাশ পেমেন্ট যাচাই প্রয়োজন',
+        `দাতা: ${donor_name}, মোবাইল: ${donor_mobile}, ট্রানজ্যাকশন আইডি: ${cleanTrx}, পরিমাণ: ৳${amount}। পেমেন্টটি যাচাইয়ের অপেক্ষায় রয়েছে।`,
+        getDhakaDateStr()
+      ]
+    );
+
+    res.json({
+      success: true,
+      message: 'আপনার অনুদানের তথ্য সফলভাবে গৃহীত হয়েছে! ফাউন্ডেশনের দায়িত্বপ্রাপ্ত কর্মকর্তা যাচাইপূর্বক চূড়ান্ত রসিদ প্রদান করবেন।',
+      submissionId: newId,
+      trxId: cleanTrx
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Public Submit Loan Application
+app.post('/api/public/submit-application', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 'nid_file', maxCount: 1 }]), (req, res) => {
+  try {
+    const b = req.body;
+    if (!b.name_bn || !b.mobile || !b.present_address || !b.requested_amount || !b.purpose) {
+      return res.status(400).json({ success: false, message: 'প্রয়োজনীয় সকল তথ্য সতর্কতার সাথে পূরণ করুন।' });
+    }
+
+    const applicantId = 'APP-MEM-' + Date.now().toString().slice(-6);
+    const applicationId = 'APP-' + Date.now().toString().slice(-6);
+
+    const photoUrl = req.files && req.files['photo'] ? '/uploads/' + req.files['photo'][0].filename : null;
+    const nidFileUrl = req.files && req.files['nid_file'] ? '/uploads/' + req.files['nid_file'][0].filename : null;
+
+    db.transaction(({ run }) => {
+      // Create Applicant record
+      run(
+        `INSERT INTO applicants (
+          id, name_bn, name_en, father_husband_name, mother_name, dob, age, gender,
+          nid_number, mobile, alt_mobile, present_address, permanent_address,
+          occupation, monthly_income, family_members, dependents,
+          emergency_contact_name, emergency_contact_mobile, photo_url, nid_file_url, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        [
+          applicantId, b.name_bn, b.name_en || '', b.father_husband_name || '', b.mother_name || '',
+          b.dob || '', parseInt(b.age, 10) || null, b.gender || 'পুরুষ',
+          b.nid_number || '', b.mobile, b.alt_mobile || '',
+          b.present_address, b.permanent_address || b.present_address,
+          b.occupation || 'সাধারণ', parseFloat(b.monthly_income) || 0,
+          parseInt(b.family_members, 10) || 1, parseInt(b.dependents, 10) || 0,
+          b.emergency_contact_name || '', b.emergency_contact_mobile || '',
+          photoUrl, nidFileUrl
+        ]
+      );
+
+      // Calculate proposed repayment date if duration given
+      const durationDays = parseInt(b.requested_duration_days, 10) || 30;
+      const todayStr = getDhakaDateStr();
+      const proposedRepayDate = addDaysToDateStr(todayStr, durationDays);
+
+      // Create Application record
+      run(
+        `INSERT INTO applications (
+          id, applicant_id, assistance_type, requested_amount, purpose, detailed_explanation,
+          requested_duration_days, proposed_repayment_date, proposed_repayment_method,
+          guarantor_name, guarantor_mobile, guarantor_relation, guarantor_address, guarantor_nid,
+          status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'জমা হয়েছে', datetime('now'))`,
+        [
+          applicationId, applicantId, b.assistance_type || 'সুদমুক্ত ধার',
+          parseFloat(b.requested_amount), b.purpose, b.detailed_explanation || '',
+          durationDays, proposedRepayDate, b.proposed_repayment_method || 'এককালীন নগদ/বিকাশ',
+          b.guarantor_name || '', b.guarantor_mobile || '', b.guarantor_relation || '',
+          b.guarantor_address || '', b.guarantor_nid || ''
+        ]
+      );
+
+      // Create Notification
+      run(
+        `INSERT INTO notifications (type, applicant_name, title_bn, message_bn, scheduled_date, channel, created_at)
+         VALUES (?, ?, ?, ?, ?, 'dashboard', datetime('now'))`,
+        [
+          'new_application',
+          b.name_bn,
+          'নতুন আবেদনপত্র জমা হয়েছে',
+          `আবেদনকারী: ${b.name_bn}, আবেদনের ধরন: ${b.assistance_type || 'সুদমুক্ত ধার'}, পরিমাণ: ৳${b.requested_amount}। আবেদন নম্বর: ${applicationId}।`,
+          todayStr
+        ]
+      );
+    });
+
+    res.json({
+      success: true,
+      message: 'আপনার আবেদনপত্রটি সফলভাবে জমা হয়েছে। আবেদন নম্বরটি সংরক্ষণ করুন।',
+      applicationId,
+      applicantId
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Dashboard Statistics
+app.get('/api/dashboard/stats', (req, res) => {
+  try {
+    // Run reminder check
+    checkRepaymentReminders();
+
+    const todayStr = getDhakaDateStr();
+    const currentMonthPrefix = todayStr.substring(0, 7); // 'YYYY-MM'
+
+    // Cash Balances
+    const cashAcc = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = 1 AND direction = "IN" AND status = "verified"')?.s || 0;
+    const cashOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = 1 AND direction = "OUT" AND status = "verified"')?.s || 0;
+    const cashOpen = db.get('SELECT opening_balance FROM financial_accounts WHERE id = 1')?.opening_balance || 0;
+    const cashBalance = cashOpen + cashAcc - cashOut;
+
+    // Bank Balances
+    const bankAcc = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = 2 AND direction = "IN" AND status = "verified"')?.s || 0;
+    const bankOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = 2 AND direction = "OUT" AND status = "verified"')?.s || 0;
+    const bankOpen = db.get('SELECT opening_balance FROM financial_accounts WHERE id = 2')?.opening_balance || 0;
+    const bankBalance = bankOpen + bankAcc - bankOut;
+
+    // bKash Balances
+    const bkashAcc = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = 3 AND direction = "IN" AND status = "verified"')?.s || 0;
+    const bkashOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = 3 AND direction = "OUT" AND status = "verified"')?.s || 0;
+    const bkashOpen = db.get('SELECT opening_balance FROM financial_accounts WHERE id = 3')?.opening_balance || 0;
+    const bkashBalance = bkashOpen + bkashAcc - bkashOut;
+
+    const totalLiquidBalance = cashBalance + bankBalance + bkashBalance;
+
+    // Donations
+    const totalDonations = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE status = "নিশ্চিত"')?.s || 0;
+    const thisMonthDonations = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE status = "নিশ্চিত" AND date LIKE ?', [currentMonthPrefix + '%'])?.s || 0;
+
+    // Loans
+    const totalDisbursed = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans')?.s || 0;
+    const totalRepaid = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans')?.s || 0;
+    const outstandingLoans = totalDisbursed - totalRepaid;
+    const activeLoansCount = db.get('SELECT COUNT(*) as c FROM loans WHERE loan_status IN ("সক্রিয়", "মেয়াদোত্তীর্ণ") AND outstanding_principal > 0')?.c || 0;
+
+    // Repayment Alerts
+    // Upcoming within 3 days
+    const upcomingLoans = db.query(
+      `SELECT l.*, a.name_bn as applicant_name, a.mobile as applicant_mobile
+       FROM loans l
+       JOIN applicants a ON l.applicant_id = a.id
+       WHERE l.loan_status = 'সক্রিয়' AND l.outstanding_principal > 0
+       ORDER BY l.due_date ASC`
+    );
+
+    let upcomingCount = 0;
+    let dueTodayCount = 0;
+    let dueTodayAmount = 0;
+    let overdueCount = 0;
+    let overdueAmount = 0;
+
+    for (const l of upcomingLoans) {
+      const diff = getDaysDiff(l.due_date, todayStr);
+      if (diff > 0 && diff <= 3) {
+        upcomingCount++;
+      } else if (diff === 0) {
+        dueTodayCount++;
+        dueTodayAmount += l.outstanding_principal;
+      } else if (diff < 0) {
+        overdueCount++;
+        overdueAmount += l.outstanding_principal;
+      }
+    }
+
+    // Expenses
+    const thisMonthExpenses = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM expenses WHERE status = "অনুমোদিত" AND date LIKE ?', [currentMonthPrefix + '%'])?.s || 0;
+
+    // Pending counts
+    const pendingBkashCount = db.get('SELECT COUNT(*) as c FROM payment_submissions WHERE verification_status = "অপেক্ষমাণ"')?.c || 0;
+    const pendingApplicationsCount = db.get('SELECT COUNT(*) as c FROM applications WHERE status IN ("জমা হয়েছে", "যাচাইাধীন", "অনুমোদনের অপেক্ষায়")')?.c || 0;
+    const totalDonors = db.get('SELECT COUNT(*) as c FROM donors WHERE status = "active"')?.c || 0;
+
+    // Recent Transactions
+    const recentTransactions = db.query(
+      `SELECT t.*, fa.name_bn as account_name
+       FROM transactions t
+       JOIN financial_accounts fa ON t.account_id = fa.id
+       ORDER BY t.created_at DESC LIMIT 8`
+    );
+
+    // Overdue List for prominent red alert
+    const overdueList = db.query(
+      `SELECT l.*, a.name_bn as applicant_name, a.mobile as applicant_mobile
+       FROM loans l
+       JOIN applicants a ON l.applicant_id = a.id
+       WHERE l.outstanding_principal > 0 AND l.due_date < ?
+       ORDER BY l.due_date ASC`,
+      [todayStr]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        cashBalance,
+        bankBalance,
+        bkashBalance,
+        totalLiquidBalance,
+        totalDonations,
+        thisMonthDonations,
+        totalDisbursed,
+        totalRepaid,
+        outstandingLoans,
+        activeLoansCount,
+        upcomingCount,
+        dueTodayCount,
+        dueTodayAmount,
+        overdueCount,
+        overdueAmount,
+        thisMonthExpenses,
+        pendingBkashCount,
+        pendingApplicationsCount,
+        totalDonors,
+        recentTransactions,
+        overdueList,
+        todayStr
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Donor Management
+app.get('/api/donors', (req, res) => {
+  try {
+    const { q, category } = req.query;
+    let sql = 'SELECT * FROM donors WHERE 1=1';
+    const params = [];
+
+    if (q) {
+      sql += ' AND (name_bn LIKE ? OR name_en LIKE ? OR mobile LIKE ? OR id LIKE ?)';
+      const p = `%${q}%`;
+      params.push(p, p, p, p);
+    }
+    if (category) {
+      sql += ' AND category = ?';
+      params.push(category);
+    }
+    sql += ' ORDER BY created_at DESC';
+
+    const donors = db.query(sql, params);
+
+    // Attach total verified donations to each donor
+    for (const donor of donors) {
+      const stats = db.get(
+        'SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM donations WHERE donor_id = ? AND status = "নিশ্চিত"',
+        [donor.id]
+      );
+      donor.totalDonated = stats.total;
+      donor.donationCount = stats.count;
+    }
+
+    res.json({ success: true, data: donors });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/donors', upload.single('photo'), (req, res) => {
+  try {
+    const b = req.body;
+    if (!b.name_bn || !b.mobile) {
+      return res.status(400).json({ success: false, message: 'দাতার নাম ও মোবাইল নম্বর আবশ্যক।' });
+    }
+
+    const donorId = 'DON-' + Date.now().toString().slice(-6);
+    const photoUrl = req.file ? '/uploads/' + req.file.filename : (b.photo_url || null);
+
+    db.run(
+      `INSERT INTO donors (
+        id, name_bn, name_en, mobile, whatsapp, email, address,
+        category, frequency, commitment_amount, preferred_payment_method, notes, photo_url, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'))`,
+      [
+        donorId, b.name_bn, b.name_en || '', b.mobile, b.whatsapp || b.mobile,
+        b.email || '', b.address || '', b.category || 'এককালীন দাতা',
+        b.frequency || 'এককালীন', parseFloat(b.commitment_amount) || 0,
+        b.preferred_payment_method || 'বিকাশ', b.notes || '', photoUrl
+      ]
+    );
+
+    logAudit(b.user_id, b.user_name, 'CREATE', 'donors', donorId, `Registered donor: ${b.name_bn}`, req);
+    res.json({ success: true, message: 'নতুন দাতা সফলভাবে নিবন্ধিত হয়েছে।', donorId, photoUrl });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/donors/:id', (req, res) => {
+  try {
+    const donor = db.get('SELECT * FROM donors WHERE id = ?', [req.params.id]);
+    if (!donor) return res.status(404).json({ success: false, message: 'দাতা খুঁজে পাওয়া যায়নি।' });
+
+    const donations = db.query(
+      `SELECT d.*, f.name_bn as fund_name, fa.name_bn as account_name
+       FROM donations d
+       JOIN funds f ON d.fund_id = f.id
+       JOIN financial_accounts fa ON d.financial_account_id = fa.id
+       WHERE d.donor_id = ?
+       ORDER BY d.date DESC`,
+      [donor.id]
+    );
+
+    const totalDonated = donations
+      .filter(d => d.status === 'নিশ্চিত')
+      .reduce((sum, d) => sum + d.amount, 0);
+
+    res.json({
+      success: true,
+      data: {
+        ...donor,
+        donations,
+        totalDonated
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 6. Donation Management (Strictly separated from loans!)
+app.get('/api/donations', (req, res) => {
+  try {
+    const { status, fund_id } = req.query;
+    let sql = `
+      SELECT d.*, f.name_bn as fund_name, fa.name_bn as account_name
+      FROM donations d
+      JOIN funds f ON d.fund_id = f.id
+      JOIN financial_accounts fa ON d.financial_account_id = fa.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (status) {
+      sql += ' AND d.status = ?';
+      params.push(status);
+    }
+    if (fund_id) {
+      sql += ' AND d.fund_id = ?';
+      params.push(parseInt(fund_id, 10));
+    }
+    sql += ' ORDER BY d.date DESC, d.created_at DESC';
+
+    const donations = db.query(sql, params);
+    res.json({ success: true, data: donations });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Record Donation
+app.post('/api/donations', (req, res) => {
+  try {
+    const b = req.body;
+    if (!b.donor_name || !b.amount || !b.fund_id || !b.financial_account_id) {
+      return res.status(400).json({ success: false, message: 'প্রয়োজনীয় অনুদানের তথ্য পূরণ করুন।' });
+    }
+
+    const donationId = 'DONATION-' + Date.now().toString().slice(-6);
+    const receiptNumber = 'REC-DON-' + Date.now().toString().slice(-6);
+    const dateStr = b.date || getDhakaDateStr();
+    const amount = parseFloat(b.amount);
+    const status = b.status || 'নিশ্চিত'; // default verified if entered directly by accountant
+
+    db.transaction(({ run }) => {
+      let donorId = b.donor_id && b.donor_id !== 'NEW' && b.donor_id !== '' ? b.donor_id : null;
+
+      // Auto-detect existing donor by mobile or name, or automatically register new donor!
+      if (!donorId && b.donor_name) {
+        let existing = null;
+        if (b.donor_mobile && b.donor_mobile.trim()) {
+          existing = db.get('SELECT id FROM donors WHERE mobile = ? LIMIT 1', [b.donor_mobile.trim()]);
+        }
+        if (!existing && b.donor_name.trim()) {
+          existing = db.get('SELECT id FROM donors WHERE name_bn = ? LIMIT 1', [b.donor_name.trim()]);
+        }
+
+        if (existing) {
+          donorId = existing.id;
+        } else {
+          donorId = 'DON-' + Date.now().toString().slice(-6);
+          run(
+            `INSERT INTO donors (
+              id, name_bn, mobile, whatsapp, category, frequency, commitment_amount, status, created_at
+            ) VALUES (?, ?, ?, ?, 'এককালীন দাতা', 'এককালীন', 0, 'active', datetime('now'))`,
+            [donorId, b.donor_name.trim(), b.donor_mobile ? b.donor_mobile.trim() : '', b.donor_mobile ? b.donor_mobile.trim() : '']
+          );
+        }
+      }
+
+      run(
+        `INSERT INTO donations (
+          id, receipt_number, donor_id, donor_name, donor_mobile, amount,
+          fund_id, financial_account_id, payment_method, transaction_reference,
+          status, date, recorded_by, verified_by, verified_at, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        [
+          donationId, receiptNumber, donorId, b.donor_name.trim(),
+          b.donor_mobile || '', amount, parseInt(b.fund_id, 10),
+          parseInt(b.financial_account_id, 10), b.payment_method || 'নগদ',
+          b.transaction_reference || '', status, dateStr,
+          b.recorded_by || 'হিসাবরক্ষক',
+          status === 'নিশ্চিত' ? (b.verified_by || 'হিসাবরক্ষক') : null,
+          status === 'নিশ্চিত' ? dateStr : null,
+          b.notes || ''
+        ]
+      );
+
+      // If status is confirmed/verified, immediately post to transactions ledger!
+      if (status === 'নিশ্চিত') {
+        const trxId = 'TRX-' + Date.now().toString().slice(-6);
+        run(
+          `INSERT INTO transactions (
+            id, date, type, account_id, fund_id, amount, direction,
+            related_entity_type, related_entity_id, reference_no, description_bn,
+            recorded_by, status, created_at
+          ) VALUES (?, ?, 'DONATION', ?, ?, ?, 'IN', 'donations', ?, ?, ?, ?, 'verified', datetime('now'))`,
+          [
+            trxId, dateStr, parseInt(b.financial_account_id, 10), parseInt(b.fund_id, 10),
+            amount, donationId, receiptNumber,
+            `অনুদান প্রাপ্তি: ${b.donor_name} (${b.payment_method || 'নগদ'})`,
+            b.recorded_by || 'হিসাবরক্ষক'
+          ]
+        );
+      }
+    });
+
+    logAudit(b.user_id, b.user_name, 'CREATE', 'donations', donationId, `Recorded donation ৳${amount} from ${b.donor_name}`, req);
+    res.json({
+      success: true,
+      message: 'অনুদান সফলভাবে রেকর্ড করা হয়েছে।',
+      donationId,
+      receiptNumber
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Verify a Pending Donation
+app.post('/api/donations/:id/verify', (req, res) => {
+  try {
+    const donation = db.get('SELECT * FROM donations WHERE id = ?', [req.params.id]);
+    if (!donation) return res.status(404).json({ success: false, message: 'অনুদান খুঁজে পাওয়া যায়নি।' });
+    if (donation.status === 'নিশ্চিত') {
+      return res.status(400).json({ success: false, message: 'এই অনুদানটি ইতিপূর্বে নিশ্চিত করা হয়েছে।' });
+    }
+
+    const todayStr = getDhakaDateStr();
+
+    db.transaction(({ run }) => {
+      run(
+        `UPDATE donations SET status = 'নিশ্চিত', verified_by = ?, verified_at = ? WHERE id = ?`,
+        [req.body.user_name || 'Accountant', todayStr, donation.id]
+      );
+
+      // Add to transaction ledger
+      const trxId = 'TRX-' + Date.now().toString().slice(-6);
+      run(
+        `INSERT INTO transactions (
+          id, date, type, account_id, fund_id, amount, direction,
+          related_entity_type, related_entity_id, reference_no, description_bn,
+          recorded_by, status, created_at
+        ) VALUES (?, ?, 'DONATION', ?, ?, ?, 'IN', 'donations', ?, ?, ?, ?, 'verified', datetime('now'))`,
+        [
+          trxId, todayStr, donation.financial_account_id, donation.fund_id,
+          donation.amount, donation.id, donation.receipt_number,
+          `যাচাইকৃত অনুদান: ${donation.donor_name} (রেফারেন্স: ${donation.transaction_reference || 'N/A'})`,
+          req.body.user_name || 'Accountant'
+        ]
+      );
+    });
+
+    logAudit(req.body.user_id, req.body.user_name, 'VERIFY', 'donations', donation.id, `Verified donation ৳${donation.amount}`, req);
+    res.json({ success: true, message: 'অনুদান সফলভাবে যাচাই ও নিশ্চিত করা হয়েছে।' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. bKash Submissions & Verification
+app.get('/api/bkash-submissions', (req, res) => {
+  try {
+    const submissions = db.query('SELECT * FROM payment_submissions ORDER BY created_at DESC');
+    res.json({ success: true, data: submissions });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Verifies bKash Submission
+app.post('/api/bkash-submissions/:id/verify', (req, res) => {
+  try {
+    const sub = db.get('SELECT * FROM payment_submissions WHERE id = ?', [req.params.id]);
+    if (!sub) return res.status(404).json({ success: false, message: 'পেমেন্ট জমা রেকর্ড পাওয়া যায়নি।' });
+    if (sub.verification_status === 'নিশ্চিত') {
+      return res.status(400).json({ success: false, message: 'এই পেমেন্টটি ইতিপূর্বে যাচাই করা হয়েছে।' });
+    }
+
+    const todayStr = getDhakaDateStr();
+    const donationId = 'DONATION-' + Date.now().toString().slice(-6);
+    const receiptNumber = 'REC-DON-' + Date.now().toString().slice(-6);
+    const trxId = 'TRX-' + Date.now().toString().slice(-6);
+
+    // Map fund_category to fund_id
+    const fund = db.get('SELECT id FROM funds WHERE name_bn LIKE ? OR code = "GENERAL"', [`%${sub.fund_category}%`]) || { id: 1 };
+    // bKash account is id 3
+    const bkashAccount = db.get('SELECT id FROM financial_accounts WHERE account_type = "mfs" OR name_bn LIKE "%বিকাশ%"') || { id: 3 };
+
+    db.transaction(({ run }) => {
+      // 1. Create verified donation
+      run(
+        `INSERT INTO donations (
+          id, receipt_number, donor_id, donor_name, donor_mobile, amount,
+          fund_id, financial_account_id, payment_method, transaction_reference,
+          status, date, recorded_by, verified_by, verified_at, notes, created_at
+        ) VALUES (?, ?, null, ?, ?, ?, ?, ?, 'bKash Send Money', ?, 'নিশ্চিত', ?, ?, ?, ?, ?, datetime('now'))`,
+        [
+          donationId, receiptNumber, sub.donor_name, sub.donor_mobile, sub.amount,
+          fund.id, bkashAccount.id, sub.transaction_id, todayStr,
+          'বিকাশ অনলাইন সাবমিশন', req.body.user_name || 'Admin', todayStr,
+          `বিকাশ প্রেরক নম্বর: ${sub.sender_bkash_mobile || 'N/A'}`
+        ]
+      );
+
+      // 2. Add to transaction ledger (Only verified payments affect cash balance!)
+      run(
+        `INSERT INTO transactions (
+          id, date, type, account_id, fund_id, amount, direction,
+          related_entity_type, related_entity_id, reference_no, description_bn,
+          recorded_by, status, created_at
+        ) VALUES (?, ?, 'DONATION', ?, ?, ?, 'IN', 'donations', ?, ?, ?, ?, 'verified', datetime('now'))`,
+        [
+          trxId, todayStr, bkashAccount.id, fund.id, sub.amount, donationId, receiptNumber,
+          `বিকাশ অনুদান: ${sub.donor_name} (TrxID: ${sub.transaction_id})`,
+          req.body.user_name || 'Admin'
+        ]
+      );
+
+      // 3. Update submission record
+      run(
+        `UPDATE payment_submissions SET
+          verification_status = 'নিশ্চিত', verified_by = ?, verified_at = ?,
+          associated_donation_id = ?
+         WHERE id = ?`,
+        [req.body.user_name || 'Admin', todayStr, donationId, sub.id]
+      );
+    });
+
+    logAudit(req.body.user_id, req.body.user_name, 'VERIFY', 'bkash_submissions', sub.id, `Verified bKash TrxID: ${sub.transaction_id} (৳${sub.amount})`, req);
+    res.json({
+      success: true,
+      message: 'বিকাশ পেমেন্ট সফলভাবে যাচাই করা হয়েছে এবং অনুদান রসিদ তৈরি হয়েছে!',
+      donationId,
+      receiptNumber
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Rejects bKash Submission
+app.post('/api/bkash-submissions/:id/reject', (req, res) => {
+  try {
+    const { reason } = req.body;
+    db.run(
+      `UPDATE payment_submissions SET
+        verification_status = 'প্রত্যাখ্যাত', rejection_reason = ?, verified_by = ?, verified_at = datetime('now')
+       WHERE id = ?`,
+      [reason || 'তথ্য অমিল বা ভুল ট্রানজ্যাকশন আইডি', req.body.user_name || 'Admin', req.params.id]
+    );
+
+    logAudit(req.body.user_id, req.body.user_name, 'REJECT', 'bkash_submissions', req.params.id, `Rejected bKash submission: ${reason}`, req);
+    res.json({ success: true, message: 'পেমেন্ট আবেদন প্রত্যাখ্যাত হিসেবে চিহ্নিত করা হয়েছে।' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 8. Applications & Verification & Committee Approval
+app.get('/api/applications', (req, res) => {
+  try {
+    const { status, type } = req.query;
+    let sql = `
+      SELECT ap.*, app.name_bn as applicant_name, app.mobile as applicant_mobile,
+             app.present_address, app.occupation, app.monthly_income, app.photo_url, app.nid_number
+      FROM applications ap
+      JOIN applicants app ON ap.applicant_id = app.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (status) {
+      sql += ' AND ap.status = ?';
+      params.push(status);
+    }
+    if (type) {
+      sql += ' AND ap.assistance_type = ?';
+      params.push(type);
+    }
+    sql += ' ORDER BY ap.created_at DESC';
+
+    const applications = db.query(sql, params);
+    res.json({ success: true, data: applications });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/applications/:id', (req, res) => {
+  try {
+    const application = db.get(
+      `SELECT ap.*, app.name_bn as applicant_name, app.name_en as applicant_name_en,
+              app.father_husband_name, app.mother_name, app.dob, app.age, app.gender,
+              app.nid_number, app.mobile as applicant_mobile, app.alt_mobile,
+              app.present_address, app.permanent_address, app.occupation, app.monthly_income,
+              app.family_members, app.dependents, app.emergency_contact_name, app.emergency_contact_mobile,
+              app.photo_url, app.nid_file_url
+       FROM applications ap
+       JOIN applicants app ON ap.applicant_id = app.id
+       WHERE ap.id = ?`,
+      [req.params.id]
+    );
+    if (!application) return res.status(404).json({ success: false, message: 'আবেদনপত্র পাওয়া যায়নি।' });
+
+    const relatedLoan = db.get('SELECT * FROM loans WHERE application_id = ?', [application.id]);
+
+    res.json({ success: true, data: { ...application, loan: relatedLoan } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Verification Officer adds Field Verification Notes
+app.post('/api/applications/:id/verify', (req, res) => {
+  try {
+    const { notes, officer_name, recommendation } = req.body;
+    db.run(
+      `UPDATE applications SET
+        status = 'যাচাইাধীন', verification_notes = ?, verification_officer_id = ?,
+        committee_recommendation = ?, verified_at = datetime('now')
+       WHERE id = ?`,
+      [notes || '', officer_name || 'যাচাই কর্মকর্তা', recommendation || '', req.params.id]
+    );
+
+    logAudit(req.body.user_id, officer_name, 'VERIFY', 'applications', req.params.id, `Verification report submitted: ${recommendation}`, req);
+    res.json({ success: true, message: 'মাঠপর্যায়ের যাচাই প্রতিবেদন সফলভাবে সংরক্ষিত হয়েছে।' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Committee / Admin Approves Application
+app.post('/api/applications/:id/approve', (req, res) => {
+  try {
+    const { approved_amount, approved_duration_days, approver_name, notes } = req.body;
+    if (!approved_amount) {
+      return res.status(400).json({ success: false, message: 'অনুমোদিত টাকার পরিমাণ উল্লেখ করুন।' });
+    }
+
+    db.run(
+      `UPDATE applications SET
+        status = 'অনুমোদিত', approved_amount = ?, approved_duration_days = ?,
+        approved_by = ?, approved_at = datetime('now'), detailed_explanation = detailed_explanation || ?
+       WHERE id = ?`,
+      [
+        parseFloat(approved_amount),
+        parseInt(approved_duration_days, 10) || 30,
+        approver_name || 'চেয়ারম্যান ও অনুমোদন কমিটি',
+        notes ? ` [অনুমোদন মন্তব্য: ${notes}]` : '',
+        req.params.id
+      ]
+    );
+
+    logAudit(req.body.user_id, approver_name, 'APPROVE', 'applications', req.params.id, `Approved assistance ৳${approved_amount}`, req);
+    res.json({ success: true, message: 'আবেদনটি সফলভাবে অনুমোদিত হয়েছে। এখন অর্থ বিতরণের জন্য প্রস্তুত।' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Reject Application
+app.post('/api/applications/:id/reject', (req, res) => {
+  try {
+    const { reason, rejected_by } = req.body;
+    db.run(
+      `UPDATE applications SET
+        status = 'প্রত্যাখ্যাত', rejection_reason = ?, approved_by = ?, approved_at = datetime('now')
+       WHERE id = ?`,
+      [reason || 'যাচাই ও পর্যালোচনায় অযোগ্য বিবেচিত', rejected_by || 'অনুমোদন কমিটি', req.params.id]
+    );
+
+    logAudit(req.body.user_id, rejected_by, 'REJECT', 'applications', req.params.id, `Rejected application: ${reason}`, req);
+    res.json({ success: true, message: 'আবেদনটি প্রত্যাখ্যাত হয়েছে।' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 9. Loan Disbursement (Separate from approval! Checks balance, creates agreement, receipt, and ledger entry)
+app.post('/api/loans/disburse', (req, res) => {
+  try {
+    const {
+      application_id, fund_id, disbursed_from_account_id,
+      actual_disbursement_date, approved_duration_days, disbursed_amount,
+      disbursed_by, notes
+    } = req.body;
+
+    const appRecord = db.get('SELECT * FROM applications WHERE id = ?', [application_id]);
+    if (!appRecord) return res.status(404).json({ success: false, message: 'আবেদন খুঁজে পাওয়া যায়নি।' });
+    if (appRecord.status !== 'অনুমোদিত') {
+      return res.status(400).json({ success: false, message: 'কেবলমাত্র অনুমোদিত আবেদনের অর্থ বিতরণ করা যাবে।' });
+    }
+
+    const principal = parseFloat(disbursed_amount || appRecord.approved_amount);
+    const duration = parseInt(approved_duration_days || appRecord.approved_duration_days || 30, 10);
+    const disbDate = actual_disbursement_date || getDhakaDateStr();
+
+    // Automatic Maturity Date Formula:
+    // Repayment Due Date = Actual Disbursement Date + Approved Duration in Calendar Days
+    const dueDate = addDaysToDateStr(disbDate, duration);
+
+    // Check account balance
+    const accId = parseInt(disbursed_from_account_id, 10);
+    const accOpen = db.get('SELECT opening_balance, name_bn FROM financial_accounts WHERE id = ?', [accId]);
+    const accIn = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "IN" AND status = "verified"', [accId])?.s || 0;
+    const accOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "OUT" AND status = "verified"', [accId])?.s || 0;
+    const currentBalance = (accOpen?.opening_balance || 0) + accIn - accOut;
+
+    if (currentBalance < principal) {
+      return res.status(400).json({
+        success: false,
+        message: `নির্বাচিত হিসাব (${accOpen?.name_bn}) এ পর্যাপ্ত ব্যালেন্স নেই। বর্তমান ব্যালেন্স: ৳${currentBalance}, প্রয়োজনীয়: ৳${principal}।`
+      });
+    }
+
+    const loanId = 'LOAN-' + Date.now().toString().slice(-6);
+    const disbReceiptNo = 'REC-DISB-' + Date.now().toString().slice(-6);
+    const agreementNo = 'AGR-LOAN-' + Date.now().toString().slice(-6);
+    const trxId = 'TRX-' + Date.now().toString().slice(-6);
+
+    const applicant = db.get('SELECT * FROM applicants WHERE id = ?', [appRecord.applicant_id]);
+
+    db.transaction(({ run }) => {
+      // 1. Insert into loans
+      run(
+        `INSERT INTO loans (
+          id, application_id, applicant_id, fund_id, disbursed_from_account_id,
+          original_principal, approved_duration_days, actual_disbursement_date, due_date,
+          repayment_method, total_principal_repaid, outstanding_principal, loan_status,
+          disbursement_receipt_number, disbursed_by, agreement_number, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'সক্রিয়', ?, ?, ?, ?, datetime('now'))`,
+        [
+          loanId, appRecord.id, appRecord.applicant_id, parseInt(fund_id || 2, 10),
+          accId, principal, duration, disbDate, dueDate,
+          appRecord.proposed_repayment_method || 'নগদ/বিকাশ', principal,
+          disbReceiptNo, disbursed_by || 'হিসাব শাখা', agreementNo, notes || ''
+        ]
+      );
+
+      // 2. Insert into unified transaction ledger
+      // Loan disbursement reduces available liquid cash and creates a loan receivable asset!
+      run(
+        `INSERT INTO transactions (
+          id, date, type, account_id, fund_id, amount, direction,
+          related_entity_type, related_entity_id, reference_no, description_bn,
+          recorded_by, status, created_at
+        ) VALUES (?, ?, 'DISBURSEMENT', ?, ?, ?, 'OUT', 'loans', ?, ?, ?, ?, 'verified', datetime('now'))`,
+        [
+          trxId, disbDate, accId, parseInt(fund_id || 2, 10), principal,
+          loanId, disbReceiptNo,
+          `সুদমুক্ত ধার বিতরণ: ${applicant.name_bn} (মেয়াদ: ${duration} দিন, নির্ধারিত ফেরত: ${dueDate})`,
+          disbursed_by || 'হিসাব শাখা'
+        ]
+      );
+
+      // 3. Update application status
+      run(
+        `UPDATE applications SET status = 'অর্থ বিতরণ হয়েছে' WHERE id = ?`,
+        [appRecord.id]
+      );
+    });
+
+    logAudit(req.body.user_id, disbursed_by, 'DISBURSE', 'loans', loanId, `Disbursed interest-free loan ৳${principal} to ${applicant.name_bn}`, req);
+
+    res.json({
+      success: true,
+      message: 'সুদমুক্ত ধার সফলভাবে বিতরণ করা হয়েছে এবং চুক্তিপত্র ও রসিদ তৈরি হয়েছে!',
+      loanId,
+      disbursementReceiptNumber: disbReceiptNo,
+      agreementNumber: agreementNo,
+      actualDisbursementDate: disbDate,
+      dueDate,
+      principal
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 10. Loan Repayment Management (Principal return - NEVER treated as donation!)
+app.get('/api/loans', (req, res) => {
+  try {
+    const { status } = req.query;
+    let sql = `
+      SELECT l.*, a.name_bn as applicant_name, a.mobile as applicant_mobile,
+             a.present_address, a.nid_number, fa.name_bn as account_name,
+             f.name_bn as fund_name
+      FROM loans l
+      JOIN applicants a ON l.applicant_id = a.id
+      JOIN financial_accounts fa ON l.disbursed_from_account_id = fa.id
+      JOIN funds f ON l.fund_id = f.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (status) {
+      sql += ' AND l.loan_status = ?';
+      params.push(status);
+    }
+    sql += ' ORDER BY l.due_date ASC';
+
+    const loans = db.query(sql, params);
+    const todayStr = getDhakaDateStr();
+
+    for (const l of loans) {
+      l.daysDiff = getDaysDiff(l.due_date, todayStr);
+    }
+
+    res.json({ success: true, data: loans });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/loans/:id', (req, res) => {
+  try {
+    const loan = db.get(
+      `SELECT l.*, a.name_bn as applicant_name, a.name_en as applicant_name_en,
+              a.father_husband_name, a.mother_name, a.mobile as applicant_mobile,
+              a.present_address, a.permanent_address, a.nid_number, a.photo_url,
+              ap.purpose, ap.guarantor_name, ap.guarantor_mobile, ap.guarantor_relation,
+              fa.name_bn as account_name, f.name_bn as fund_name
+       FROM loans l
+       JOIN applicants a ON l.applicant_id = a.id
+       JOIN applications ap ON l.application_id = ap.id
+       JOIN financial_accounts fa ON l.disbursed_from_account_id = fa.id
+       JOIN funds f ON l.fund_id = f.id
+       WHERE l.id = ?`,
+      [req.params.id]
+    );
+    if (!loan) return res.status(404).json({ success: false, message: 'ধার রেকর্ড পাওয়া যায়নি।' });
+
+    const repayments = db.query(
+      `SELECT r.*, fa.name_bn as received_account_name
+       FROM repayments r
+       JOIN financial_accounts fa ON r.received_in_account_id = fa.id
+       WHERE r.loan_id = ?
+       ORDER BY r.repayment_date DESC`,
+      [loan.id]
+    );
+
+    const extensions = db.query(
+      'SELECT * FROM loan_extensions WHERE loan_id = ? ORDER BY created_at DESC',
+      [loan.id]
+    );
+
+    const todayStr = getDhakaDateStr();
+    loan.daysDiff = getDaysDiff(loan.due_date, todayStr);
+
+    res.json({
+      success: true,
+      data: {
+        ...loan,
+        repayments,
+        extensions
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Record Repayment
+app.post('/api/repayments', (req, res) => {
+  try {
+    const {
+      loan_id, amount, repayment_date, received_in_account_id,
+      payment_method, transaction_reference, recorded_by, notes
+    } = req.body;
+
+    const loan = db.get('SELECT * FROM loans WHERE id = ?', [loan_id]);
+    if (!loan) return res.status(404).json({ success: false, message: 'ধার রেকর্ড পাওয়া যায়নি।' });
+    if (loan.outstanding_principal <= 0) {
+      return res.status(400).json({ success: false, message: 'এই ধারটি ইতোমধ্যেই সম্পূর্ণ পরিশোধিত।' });
+    }
+
+    const repayAmount = parseFloat(amount);
+    if (repayAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'সঠিক ফেরতের পরিমাণ লিখুন।' });
+    }
+    if (repayAmount > loan.outstanding_principal) {
+      return res.status(400).json({
+        success: false,
+        message: `ফেরতের পরিমাণ বকেয়া মূলধনের চেয়ে বেশি হতে পারে না। সর্বোচ্চ বকেয়া: ৳${loan.outstanding_principal}।`
+      });
+    }
+
+    const repayDate = repayment_date || getDhakaDateStr();
+    const accId = parseInt(received_in_account_id || 1, 10);
+    const repaymentId = 'REP-' + Date.now().toString().slice(-6);
+    const receiptNo = 'REC-REP-' + Date.now().toString().slice(-6);
+    const trxId = 'TRX-' + Date.now().toString().slice(-6);
+
+    const newRepaidTotal = loan.total_principal_repaid + repayAmount;
+    const newOutstanding = loan.original_principal - newRepaidTotal;
+    const isFullyRepaid = newOutstanding <= 0.001; // safety float tolerance
+
+    const applicant = db.get('SELECT name_bn FROM applicants WHERE id = ?', [loan.applicant_id]);
+
+    db.transaction(({ run }) => {
+      // 1. Insert Repayment record
+      run(
+        `INSERT INTO repayments (
+          id, receipt_number, loan_id, applicant_id, amount, repayment_date,
+          received_in_account_id, payment_method, transaction_reference,
+          status, recorded_by, verified_by, verified_at, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'নিশ্চিত', ?, ?, ?, ?, datetime('now'))`,
+        [
+          repaymentId, receiptNo, loan.id, loan.applicant_id, repayAmount,
+          repayDate, accId, payment_method || 'নগদ', transaction_reference || '',
+          recorded_by || 'হিসাব শাখা', recorded_by || 'হিসাব শাখা', repayDate, notes || ''
+        ]
+      );
+
+      // 2. Update loan record
+      run(
+        `UPDATE loans SET
+          total_principal_repaid = ?, outstanding_principal = ?,
+          loan_status = ?
+         WHERE id = ?`,
+        [
+          newRepaidTotal,
+          newOutstanding < 0 ? 0 : newOutstanding,
+          isFullyRepaid ? 'সম্পূর্ণ পরিশোধিত' : 'সক্রিয়',
+          loan.id
+        ]
+      );
+
+      // 3. Post to Transaction Ledger
+      // IMPORTANT: Repayment is an asset conversion (Cash IN, Loan Receivable DOWN). It is NOT donation income!
+      run(
+        `INSERT INTO transactions (
+          id, date, type, account_id, fund_id, amount, direction,
+          related_entity_type, related_entity_id, reference_no, description_bn,
+          recorded_by, status, created_at
+        ) VALUES (?, ?, 'REPAYMENT', ?, ?, ?, 'IN', 'repayments', ?, ?, ?, ?, 'verified', datetime('now'))`,
+        [
+          trxId, repayDate, accId, loan.fund_id, repayAmount,
+          repaymentId, receiptNo,
+          `ধার ফেরত গ্রহণ: ${applicant.name_bn} (রসিদ: ${receiptNo})`,
+          recorded_by || 'হিসাব শাখা'
+        ]
+      );
+
+      // 4. If fully repaid, update application status and stop future alerts
+      if (isFullyRepaid) {
+        run(`UPDATE applications SET status = 'সম্পূর্ণ পরিশোধিত' WHERE id = ?`, [loan.application_id]);
+      }
+    });
+
+    logAudit(req.body.user_id, recorded_by, 'REPAY', 'loans', loan.id, `Received repayment ৳${repayAmount} from ${applicant.name_bn}. Outstanding: ৳${newOutstanding}`, req);
+
+    res.json({
+      success: true,
+      message: isFullyRepaid ? 'ধারটি সম্পূর্ণ পরিশোধিত হয়েছে এবং দায়মুক্তি সনদ প্রস্তুত!' : 'আংশিক কিস্তি/ফেরত সফলভাবে গ্রহণ করা হয়েছে।',
+      repaymentId,
+      receiptNumber: receiptNo,
+      isFullyRepaid,
+      outstandingPrincipal: newOutstanding < 0 ? 0 : newOutstanding
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Authorized Loan Extension
+app.post('/api/loans/:id/extend', (req, res) => {
+  try {
+    const { extension_days, reason, approved_by } = req.body;
+    const loan = db.get('SELECT * FROM loans WHERE id = ?', [req.params.id]);
+    if (!loan) return res.status(404).json({ success: false, message: 'ধার রেকর্ড পাওয়া যায়নি।' });
+
+    const days = parseInt(extension_days, 10);
+    if (!days || days <= 0) {
+      return res.status(400).json({ success: false, message: 'সঠিক বর্ধিত দিনের সংখ্যা দিন।' });
+    }
+    if (!reason) {
+      return res.status(400).json({ success: false, message: 'মেয়াদ বৃদ্ধির কারণ উল্লেখ করা বাধ্যতামূলক।' });
+    }
+
+    const prevDueDate = loan.due_date;
+    const newDueDate = addDaysToDateStr(prevDueDate, days);
+    const todayStr = getDhakaDateStr();
+
+    db.transaction(({ run }) => {
+      run(
+        `INSERT INTO loan_extensions (
+          loan_id, previous_due_date, new_due_date, extension_days, reason,
+          approved_by, approved_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        [loan.id, prevDueDate, newDueDate, days, reason, approved_by || 'চেয়ারম্যান']
+      );
+
+      run(
+        `UPDATE loans SET
+          due_date = ?,
+          loan_status = CASE WHEN ? > due_date THEN 'মেয়াদোত্তীর্ণ' ELSE 'সক্রিয়' END
+         WHERE id = ?`,
+        [newDueDate, todayStr, loan.id]
+      );
+    });
+
+    logAudit(req.body.user_id, approved_by, 'UPDATE', 'loans', loan.id, `Extended loan due date by ${days} days. New due date: ${newDueDate}. Reason: ${reason}`, req);
+
+    res.json({
+      success: true,
+      message: `ধারের মেয়াদ সফলভাবে ${days} দিন বৃদ্ধি করা হয়েছে। নতুন ফেরতের তারিখ: ${newDueDate}।`,
+      newDueDate
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 11. Scheduled Notifications API
+app.get('/api/notifications', (req, res) => {
+  try {
+    const notifications = db.query('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 50');
+    const unreadCount = db.get('SELECT COUNT(*) as c FROM notifications WHERE is_read = 0')?.c || 0;
+    res.json({ success: true, data: notifications, unreadCount });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/notifications/:id/read', (req, res) => {
+  try {
+    db.run('UPDATE notifications SET is_read = 1 WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/notifications/run-check', (req, res) => {
+  const result = checkRepaymentReminders();
+  res.json(result);
+});
+
+// 12. Expenses
+app.get('/api/expenses', (req, res) => {
+  try {
+    const expenses = db.query(
+      `SELECT e.*, fa.name_bn as account_name
+       FROM expenses e
+       JOIN financial_accounts fa ON e.payment_account_id = fa.id
+       ORDER BY e.date DESC`
+    );
+    res.json({ success: true, data: expenses });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/expenses', (req, res) => {
+  try {
+    const { date, category, amount, payment_account_id, recipient_vendor, description, entered_by, approved_by } = req.body;
+    if (!category || !amount || !payment_account_id || !recipient_vendor) {
+      return res.status(400).json({ success: false, message: 'ব্যয়ের প্রয়োজনীয় তথ্য পূরণ করুন।' });
+    }
+
+    const expAmount = parseFloat(amount);
+    const accId = parseInt(payment_account_id, 10);
+
+    // Validate account balance
+    const accOpen = db.get('SELECT opening_balance, name_bn FROM financial_accounts WHERE id = ?', [accId]);
+    const accIn = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "IN" AND status = "verified"', [accId])?.s || 0;
+    const accOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "OUT" AND status = "verified"', [accId])?.s || 0;
+    const currentBalance = (accOpen?.opening_balance || 0) + accIn - accOut;
+
+    if (currentBalance < expAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `হিসাবটিতে (${accOpen?.name_bn}) পর্যাপ্ত ব্যালেন্স নেই। বর্তমান ব্যালেন্স: ৳${currentBalance}।`
+      });
+    }
+
+    const expId = 'EXP-' + Date.now().toString().slice(-6);
+    const voucherNo = 'VOUCH-' + Date.now().toString().slice(-6);
+    const trxId = 'TRX-' + Date.now().toString().slice(-6);
+    const expDate = date || getDhakaDateStr();
+
+    db.transaction(({ run }) => {
+      run(
+        `INSERT INTO expenses (
+          id, date, category, amount, payment_account_id, recipient_vendor,
+          description, voucher_receipt_number, entered_by, approved_by, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'অনুমোদিত', datetime('now'))`,
+        [
+          expId, expDate, category, expAmount, accId, recipient_vendor,
+          description || '', voucherNo, entered_by || 'হিসাবরক্ষক', approved_by || 'অনুমোদিত'
+        ]
+      );
+
+      run(
+        `INSERT INTO transactions (
+          id, date, type, account_id, fund_id, amount, direction,
+          related_entity_type, related_entity_id, reference_no, description_bn,
+          recorded_by, status, created_at
+        ) VALUES (?, ?, 'EXPENSE', ?, null, ?, 'OUT', 'expenses', ?, ?, ?, ?, 'verified', datetime('now'))`,
+        [
+          trxId, expDate, accId, expAmount, expId, voucherNo,
+          `ব্যয়: ${category} - ${recipient_vendor} (${description || ''})`,
+          entered_by || 'হিসাবরক্ষক'
+        ]
+      );
+    });
+
+    logAudit(req.body.user_id, entered_by, 'CREATE', 'expenses', expId, `Recorded expense ৳${expAmount} for ${category}`, req);
+    res.json({
+      success: true,
+      message: 'ব্যয় সফলভাবে লিপিবদ্ধ করা হয়েছে।',
+      expenseId: expId,
+      voucherNumber: voucherNo
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 13. Inter-Account Transfers
+app.post('/api/transfers', (req, res) => {
+  try {
+    const { from_account_id, to_account_id, amount, date, reference, notes, recorded_by } = req.body;
+    const fromId = parseInt(from_account_id, 10);
+    const toId = parseInt(to_account_id, 10);
+    const trfAmount = parseFloat(amount);
+
+    if (fromId === toId) {
+      return res.status(400).json({ success: false, message: 'একই হিসাবের মধ্যে স্থানান্তর সম্ভব নয়।' });
+    }
+    if (trfAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'সঠিক স্থানান্তরের পরিমাণ লিখুন।' });
+    }
+
+    // Check from balance
+    const accOpen = db.get('SELECT opening_balance, name_bn FROM financial_accounts WHERE id = ?', [fromId]);
+    const accIn = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "IN" AND status = "verified"', [fromId])?.s || 0;
+    const accOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "OUT" AND status = "verified"', [fromId])?.s || 0;
+    const fromBalance = (accOpen?.opening_balance || 0) + accIn - accOut;
+
+    if (fromBalance < trfAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `উৎস হিসাবে (${accOpen?.name_bn}) পর্যাপ্ত ব্যালেন্স নেই। বর্তমান ব্যালেন্স: ৳${fromBalance}।`
+      });
+    }
+
+    const trfId = 'TRF-' + Date.now().toString().slice(-6);
+    const trDate = date || getDhakaDateStr();
+    const toAcc = db.get('SELECT name_bn FROM financial_accounts WHERE id = ?', [toId]);
+
+    db.transaction(({ run }) => {
+      run(
+        `INSERT INTO account_transfers (
+          id, from_account_id, to_account_id, amount, date, reference, notes, recorded_by, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        [trfId, fromId, toId, trfAmount, trDate, reference || '', notes || '', recorded_by || 'হিসাব শাখা']
+      );
+
+      // Debit Out from Source
+      run(
+        `INSERT INTO transactions (
+          id, date, type, account_id, fund_id, amount, direction,
+          related_entity_type, related_entity_id, reference_no, description_bn,
+          recorded_by, status, created_at
+        ) VALUES (?, ?, 'TRANSFER_OUT', ?, null, ?, 'OUT', 'transfers', ?, ?, ?, ?, 'verified', datetime('now'))`,
+        [
+          'TRX-OUT-' + Date.now().toString().slice(-6), trDate, fromId, trfAmount, trfId, reference || '',
+          `হিসাব স্থানান্তর (প্রেরণ): ${toAcc.name_bn}-এ প্রেরণ`,
+          recorded_by || 'হিসাব শাখা'
+        ]
+      );
+
+      // Credit In to Destination
+      run(
+        `INSERT INTO transactions (
+          id, date, type, account_id, fund_id, amount, direction,
+          related_entity_type, related_entity_id, reference_no, description_bn,
+          recorded_by, status, created_at
+        ) VALUES (?, ?, 'TRANSFER_IN', ?, null, ?, 'IN', 'transfers', ?, ?, ?, ?, 'verified', datetime('now'))`,
+        [
+          'TRX-IN-' + Date.now().toString().slice(-6), trDate, toId, trfAmount, trfId, reference || '',
+          `হিসাব স্থানান্তর (গ্রহণ): ${accOpen.name_bn} হতে গ্রহণ`,
+          recorded_by || 'হিসাব শাখা'
+        ]
+      );
+    });
+
+    logAudit(req.body.user_id, recorded_by, 'CREATE', 'transfers', trfId, `Transferred ৳${trfAmount} from ${accOpen.name_bn} to ${toAcc.name_bn}`, req);
+    res.json({ success: true, message: 'হিসাব স্থানান্তর সফলভাবে সম্পন্ন হয়েছে।' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 14. Accounts & Funds List with Live Balances
+app.get('/api/accounts', (req, res) => {
+  try {
+    const accounts = db.query('SELECT * FROM financial_accounts WHERE is_active = 1');
+    for (const acc of accounts) {
+      const inSum = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "IN" AND status = "verified"', [acc.id])?.s || 0;
+      const outSum = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "OUT" AND status = "verified"', [acc.id])?.s || 0;
+      acc.current_balance = acc.opening_balance + inSum - outSum;
+    }
+    res.json({ success: true, data: accounts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/funds', (req, res) => {
+  try {
+    const funds = db.query('SELECT * FROM funds');
+    for (const fund of funds) {
+      const donationIn = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = ? AND status = "নিশ্চিত"', [fund.id])?.s || 0;
+      const loanDisb = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans WHERE fund_id = ?', [fund.id])?.s || 0;
+      const loanRepaid = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans WHERE fund_id = ?', [fund.id])?.s || 0;
+      fund.total_donations = donationIn;
+      fund.total_disbursed = loanDisb;
+      fund.total_repaid = loanRepaid;
+      fund.current_balance = fund.opening_balance + donationIn - loanDisb + loanRepaid;
+    }
+    res.json({ success: true, data: funds });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 15. Financial Reports & Reconciled Balance Sheet
+app.get('/api/reports/cashbook', (req, res) => {
+  try {
+    const { start_date, end_date, account_id } = req.query;
+    let sql = `
+      SELECT t.*, fa.name_bn as account_name
+      FROM transactions t
+      JOIN financial_accounts fa ON t.account_id = fa.id
+      WHERE t.status = 'verified'
+    `;
+    const params = [];
+    if (start_date) {
+      sql += ' AND t.date >= ?';
+      params.push(start_date);
+    }
+    if (end_date) {
+      sql += ' AND t.date <= ?';
+      params.push(end_date);
+    }
+    if (account_id) {
+      sql += ' AND t.account_id = ?';
+      params.push(parseInt(account_id, 10));
+    }
+    sql += ' ORDER BY t.date ASC, t.created_at ASC';
+
+    const transactions = db.query(sql, params);
+
+    // Calculate totals
+    const totalReceipts = transactions.filter(t => t.direction === 'IN').reduce((acc, t) => acc + t.amount, 0);
+    const totalPayments = transactions.filter(t => t.direction === 'OUT').reduce((acc, t) => acc + t.amount, 0);
+
+    res.json({
+      success: true,
+      data: {
+        transactions,
+        totalReceipts,
+        totalPayments,
+        netCashFlow: totalReceipts - totalPayments
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/reports/income-expenditure', (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    let donSql = 'SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE status = "নিশ্চিত"';
+    let expSql = 'SELECT category, COALESCE(SUM(amount), 0) as s FROM expenses WHERE status = "অনুমোদিত"';
+    const params = [];
+    const expParams = [];
+
+    if (start_date && end_date) {
+      donSql += ' AND date >= ? AND date <= ?';
+      params.push(start_date, end_date);
+      expSql += ' AND date >= ? AND date <= ?';
+      expParams.push(start_date, end_date);
+    }
+    expSql += ' GROUP BY category';
+
+    const totalDonationIncome = db.get(donSql, params)?.s || 0;
+    const expenseBreakdown = db.query(expSql, expParams);
+    const totalExpenses = expenseBreakdown.reduce((sum, e) => sum + e.s, 0);
+
+    // Accounting check:
+    // Loan disbursements and repayments are Balance Sheet asset shifts, NOT operational income/expenditure!
+    const surplus = totalDonationIncome - totalExpenses;
+
+    res.json({
+      success: true,
+      data: {
+        income: {
+          donations: totalDonationIncome,
+          total: totalDonationIncome
+        },
+        expenses: {
+          breakdown: expenseBreakdown,
+          total: totalExpenses
+        },
+        netSurplus: surplus
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/reports/balance-sheet', (req, res) => {
+  try {
+    // 1. Assets
+    // Liquid Assets
+    const accounts = db.query('SELECT * FROM financial_accounts WHERE is_active = 1');
+    let totalCashAndBank = 0;
+    const accountBalances = accounts.map(acc => {
+      const inSum = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "IN" AND status = "verified"', [acc.id])?.s || 0;
+      const outSum = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "OUT" AND status = "verified"', [acc.id])?.s || 0;
+      const bal = acc.opening_balance + inSum - outSum;
+      totalCashAndBank += bal;
+      return { id: acc.id, name_bn: acc.name_bn, type: acc.account_type, balance: bal };
+    });
+
+    // Loan Receivables (Outstanding Principal)
+    const totalDisbursed = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans')?.s || 0;
+    const totalRepaid = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans')?.s || 0;
+    const loanReceivables = totalDisbursed - totalRepaid;
+
+    const totalAssets = totalCashAndBank + loanReceivables;
+
+    // 2. Liabilities (e.g. 0 unless payables tracked)
+    const totalLiabilities = 0;
+
+    // 3. Funds & Net Assets / Equity
+    const funds = db.query('SELECT * FROM funds');
+    let totalFundsBalance = 0;
+    const fundBalances = funds.map(f => {
+      const don = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = ? AND status = "নিশ্চিত"', [f.id])?.s || 0;
+      const disb = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans WHERE fund_id = ?', [f.id])?.s || 0;
+      const rep = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans WHERE fund_id = ?', [f.id])?.s || 0;
+      const bal = f.opening_balance + don - disb + rep;
+      totalFundsBalance += bal;
+      return { id: f.id, name_bn: f.name_bn, code: f.code, is_restricted: f.is_restricted, balance: bal };
+    });
+
+    // Retained Operating Surplus
+    const retainedOperatingSurplus = totalAssets - totalLiabilities - totalFundsBalance;
+
+    res.json({
+      success: true,
+      data: {
+        date: getDhakaDateStr(),
+        assets: {
+          liquidCashAndBank: totalCashAndBank,
+          accountBreakdown: accountBalances,
+          loanReceivables, // Outstanding interest-free loans to be returned
+          totalAssets
+        },
+        liabilities: {
+          payables: totalLiabilities,
+          totalLiabilities
+        },
+        equityAndFunds: {
+          fundsBreakdown: fundBalances,
+          totalFundsBalance,
+          retainedSurplus: retainedOperatingSurplus,
+          totalEquity: totalFundsBalance + retainedOperatingSurplus
+        },
+        isBalanced: Math.abs(totalAssets - (totalLiabilities + totalFundsBalance + retainedOperatingSurplus)) < 0.01
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 16. Audit Logs
+app.get('/api/audit-logs', (req, res) => {
+  try {
+    const logs = db.query('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100');
+    res.json({ success: true, data: logs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 17. System Backup & Restore
+app.get('/api/system/backup', (req, res) => {
+  try {
+    const buffer = db.exportDbBuffer();
+    const filename = `korje_hasena_backup_${getDhakaDateStr()}_${Date.now()}.sqlite`;
+    res.setHeader('Content-Type', 'application/x-sqlite3');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/system/restore', upload.single('backup_file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'ব্যাকআপ ফাইল আপলোড করুন।' });
+    }
+    const buffer = fs.readFileSync(req.file.path);
+    db.restoreDbFromBuffer(buffer);
+    fs.unlinkSync(req.file.path); // cleanup uploaded temp
+    logAudit(req.body.user_id, req.body.user_name, 'RESTORE', 'system', 'db', 'Restored database from uploaded backup file', req);
+    res.json({ success: true, message: 'ডাটাবেজ সফলভাবে রিস্টোর করা হয়েছে!' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Fallback to index.html for SPA
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Start Server
+db.getDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`=======================================================`);
+    console.log(`  কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম`);
+    console.log(`  Karje Hasana Foundation Server running on port ${PORT}`);
+    console.log(`  URL: http://localhost:${PORT}`);
+    console.log(`=======================================================`);
+  });
+}).catch(err => {
+  console.error('Failed to start server:', err);
+});
