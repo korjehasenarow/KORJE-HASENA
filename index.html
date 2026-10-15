@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম | সুদমুক্ত ঋণ, অনুদান ও হিসাব ব্যবস্থাপনা</title>
+  <meta name="description" content="কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম, বাংলাদেশ। সম্পূর্ণ সুদমুক্ত ধার (কর্জ হাসানা), অনুদান ব্যবস্থাপনা, স্বয়ংক্রিয় চুক্তিপত্র ও রসিদ এবং স্বচ্ছ আর্থিক হিসাব ব্যবস্থা।">
+  <meta name="keywords" content="কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম, সুদমুক্ত ঋণ, কর্জে হাসানা, অনুদান, বিকাশ Send Money, শাহ আলম">
+  <meta name="author" content="MD SHAH ALAM">
+  
+  <!-- Favicon and Icons -->
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="apple-touch-icon" href="/assets/logo.png">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top Administrator Notice Bar (10-Digit Validation Note) -->
+  <div id="phoneNoticeBar" class="top-notice-bar hidden"></div>
+
+  <!-- Header Top Info Bar -->
+  <header class="main-header">
+    <div class="header-top">
+      <div class="header-top-left">
+        <span class="bismillah-tag">বিসমিল্লাহির রাহমানির রাহিম</span>
+        <span class="header-top-sep">|</span>
+        <span>📍 <span id="headerOrgLocation">রৌমারী, কুড়িগ্রাম</span></span>
+        <span class="header-top-sep">|</span>
+        <span>🏥 কার্যালয়: Life Care Hospital</span>
+        <span class="header-top-sep">|</span>
+        <span>📞 হেল্পলাইন: <a href="tel:01966442769" style="color:var(--accent-gold); font-weight:700;">০১৯৬৬-৪৪২৭৬৯</a></span>
+      </div>
+      <div class="header-top-right">
+        <span>চেয়ারম্যান: <strong>MD SHAH ALAM</strong></span>
+        <a id="headerOrgPhone" href="tel:01966442769">📞 ০১৯৬৬-৪৪২৭৬৯</a>
+        <a id="headerOrgEmail" href="mailto:shahalal.siraz@gmail.com">✉️ shahalal.siraz@gmail.com</a>
+      </div>
+    </div>
+
+    <!-- Main Navigation Bar -->
+    <div class="header-content">
+      <a href="javascript:void(0)" class="brand-wrapper" onclick="App.navigate('home')">
+        <img src="/assets/logo.png" alt="কর্জে হাসানা ফাউন্ডেশন লোগো" class="brand-logo-img">
+        <div class="brand-info">
+          <h1 id="headerOrgName">কর্জে হাসানা ফাউন্ডেশন</h1>
+          <p>স্বচ্ছতা ও মানবতার কল্যাণে সুদমুক্ত সহযোগিতা</p>
+        </div>
+      </a>
+
+      <!-- Clean & Organized Navigation Links with Dropdown Sub-menus -->
+      <nav>
+        <ul class="nav-links">
+          <li>
+            <button class="nav-link active" data-view="home" onclick="App.navigate('home')">
+              🏠 হোম
+            </button>
+          </li>
+
+          <!-- Sub-menu 1: আমাদের পরিচয় -->
+          <li class="nav-dropdown" onmouseenter="App.openDropdown(this)" onmouseleave="App.scheduleCloseDropdown(this)">
+            <button class="nav-link dropdown-toggle" type="button" onclick="App.toggleDropdown(this, event)">
+              আমাদের পরিচয় <span class="dropdown-caret">▾</span>
+            </button>
+            <div class="dropdown-menu">
+              <button type="button" class="dropdown-item" data-view="about" onclick="App.navigate('about')">
+                <span class="dropdown-icon">📖</span> আমাদের সম্পর্কে
+              </button>
+              <button type="button" class="dropdown-item" data-view="objectives" onclick="App.navigate('objectives')">
+                <span class="dropdown-icon">🎯</span> লক্ষ্য ও উদ্দেশ্য
+              </button>
+              <button type="button" class="dropdown-item" data-view="home" onclick="App.scrollToSection('committeeShowcaseSection')">
+                <span class="dropdown-icon">👥</span> উপদেষ্টা ও পরিষদ
+              </button>
+              <button type="button" class="dropdown-item" data-view="transparency" onclick="App.navigate('transparency')">
+                <span class="dropdown-icon">⚖️</span> স্বচ্ছতা ও হিসাব
+              </button>
+              <button type="button" class="dropdown-item" data-view="constitution" onclick="App.navigate('constitution')">
+                <span class="dropdown-icon">📜</span> পূর্ণাঙ্গ গঠনতন্ত্র
+              </button>
+            </div>
+          </li>
+
+          <!-- Sub-menu 2: সুদমুক্ত কার্যক্রম -->
+          <li class="nav-dropdown" onmouseenter="App.openDropdown(this)" onmouseleave="App.scheduleCloseDropdown(this)">
+            <button class="nav-link dropdown-toggle" type="button" onclick="App.toggleDropdown(this, event)">
+              সুদমুক্ত কার্যক্রম <span class="dropdown-caret">▾</span>
+            </button>
+            <div class="dropdown-menu">
+              <button type="button" class="dropdown-item" data-view="activities" onclick="App.navigate('activities')">
+                <span class="dropdown-icon">🤝</span> ধার বিতরণ কার্যক্রম
+              </button>
+              <button type="button" class="dropdown-item" data-view="apply" onclick="App.navigate('apply')">
+                <span class="dropdown-icon">📝</span> সুদমুক্ত ধারের আবেদন
+              </button>
+              <button type="button" class="dropdown-item" data-view="terms" onclick="App.navigate('terms')">
+                <span class="dropdown-icon">📜</span> নীতিমালা ও শর্তাবলী
+              </button>
+            </div>
+          </li>
+
+          <!-- New Dedicated Top-level Menu: গঠনতন্ত্র -->
+          <li>
+            <button class="nav-link" data-view="constitution" onclick="App.navigate('constitution')">
+              📜 গঠনতন্ত্র
+            </button>
+          </li>
+
+          <li>
+            <button class="nav-link" data-view="contact" onclick="App.navigate('contact')">
+              📞 যোগাযোগ
+            </button>
+          </li>
+
+          <!-- Standout Action Buttons -->
+          <li class="nav-action-wrapper">
+            <button class="nav-link btn-donate" data-view="donate" onclick="App.navigate('donate')">
+              ❤️ অনুদান দিন
+            </button>
+          </li>
+          <li class="nav-action-wrapper">
+            <button class="nav-link btn-admin" data-view="admin" onclick="App.navigate('admin')">
+              🔐 এডমিন পোর্টাল
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Mobile Menu Button -->
+      <button class="mobile-menu-btn" onclick="App.toggleMobileMenu()">☰</button>
+    </div>
+  </header>
+
+  <!-- Main Dynamic Wrapper -->
+  <div class="main-wrapper">
+    <div class="container" id="mainContentArea">
+      <!-- Dynamic Content View Injected Here -->
+    </div>
+  </div>
+
+  <!-- Global Modal Dialog -->
+  <div class="modal-overlay" id="globalModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle">শিরোনাম</h3>
+        <button class="modal-close-btn" onclick="App.closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Modal Content Injected Here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Footer -->
+  <footer class="main-footer no-print">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h3>কর্জে হাসানা ফাউন্ডেশন</h3>
+        <p>
+          রৌমারী, কুড়িগ্রামের অসহায়, দরিদ্র ও কর্মঠ মানুষের আর্থ-সামাজিক উন্নয়ন এবং সুদের অভিশাপ থেকে সমাজকে রক্ষা করতে সম্পূর্ণ সুদমুক্ত ধার ও জনকল্যাণমূলক সেবা প্রদানকারী একটি অনন্য প্রতিষ্ঠান।
+        </p>
+        <p style="margin-top: 10px; font-weight: 600; color: var(--accent-gold);">
+          প্রতিষ্ঠাতা চেয়ারম্যান: MD SHAH ALAM
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h3>প্রয়োজনীয় লিংকসমূহ</h3>
+        <ul class="footer-links">
+          <li><a href="javascript:void(0)" onclick="App.navigate('home')">হোম পেজ</a></li>
+          <li><a href="javascript:void(0)" onclick="App.navigate('about')">আমাদের সম্পর্কে</a></li>
+          <li><a href="javascript:void(0)" onclick="App.navigate('objectives')">লক্ষ্য ও উদ্দেশ্য</a></li>
+          <li><a href="javascript:void(0)" onclick="App.navigate('constitution')">পূর্ণাঙ্গ গঠনতন্ত্র</a></li>
+          <li><a href="javascript:void(0)" onclick="App.navigate('terms')">শর্তাবলি (Terms & Conditions)</a></li>
+          <li><a href="javascript:void(0)" onclick="App.navigate('activities')">সুদমুক্ত ধার নীতিমালা</a></li>
+          <li><a href="javascript:void(0)" onclick="App.navigate('donate')">বিকাশের মাধ্যমে অনুদান</a></li>
+          <li><a href="javascript:void(0)" onclick="App.navigate('apply')">সহায়তা ও ঋণ আবেদন</a></li>
+          <li><a href="javascript:void(0)" onclick="App.navigate('transparency')">স্বচ্ছতা ও আর্থিক প্রতিবেদন</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h3>যোগাযোগ ও কার্যালয়</h3>
+        <p>
+          <strong>প্রধান কার্যালয়:</strong><br>
+          লাইফ কেয়ার হাসপাতাল অ্যান্ড ডায়াগনস্টিক সেন্টার<br>
+          (ব্রহ্মপুত্র ফিলিং স্টেশন ও রিফাত পরিবহন সংলগ্ন, Z4608 রোড), রৌমারী, কুড়িগ্রাম<br>
+          <strong>মোবাইল / বিকাশ / নগদ / রকেট:</strong> ০১৯৬৬-৪৪২৭৬৯ (01966442769)<br>
+          <strong>জরুরি হেল্পলাইন:</strong> ০১৯৬৬-৪৪২৭৬৯<br>
+          <strong>হোয়াটসঅ্যাপ:</strong> ০১৯৬৬-৪৪২৭৬৯<br>
+          <strong>ইমেইল:</strong> shahalal.siraz@gmail.com
+        </p>
+        <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <a href="https://wa.me/8801966442769" target="_blank" class="btn btn-sm btn-gold">
+            💬 হোয়াটসঅ্যাপ বার্তা
+          </a>
+          <button type="button" class="btn btn-sm btn-outline" style="border-color: rgba(255,255,255,0.4); color: white;" onclick="App.openMapModal()">
+            🗺️ অফিস ম্যাপ নকশা
+          </button>
+          <a href="https://www.google.com/maps/search/?api=1&query=Brahmaputra+Filling+Station+Rowmari" target="_blank" class="btn btn-sm btn-outline" style="border-color: rgba(255,255,255,0.4); color: white;">
+            🧭 জিপিএস নেভিগেশন
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>
+        © ২০২৬ কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম। সর্বস্বত্ব সংরক্ষিত। | 
+        <a href="javascript:void(0)" style="color:#9cb5a8;" onclick="App.navigate('privacy')">গোপনীয়তা নীতি</a> | 
+        <a href="javascript:void(0)" style="color:#9cb5a8;" onclick="App.navigate('terms')">শর্তাবলি</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/documents.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/admin_views.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
