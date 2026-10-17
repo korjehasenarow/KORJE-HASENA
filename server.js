@@ -10,6 +10,13 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log(`[HTTP] ${req.method} ${req.originalUrl || req.url} ${res.statusCode} (${Date.now() - start}ms)`);
+  });
+  next();
+});
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
@@ -25,6 +32,10 @@ const storage = multer.diskStorage({
         (req.originalUrl && req.originalUrl.includes('committee')) || 
         (req.path && req.path.includes('committee'))) {
       uploadDir = path.join(__dirname, 'public', 'uploads', 'committee');
+    } else if ((req.baseUrl && req.baseUrl.includes('welfare')) || 
+               (req.originalUrl && req.originalUrl.includes('welfare')) || 
+               (req.path && req.path.includes('welfare'))) {
+      uploadDir = path.join(__dirname, 'public', 'uploads', 'welfare');
     }
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -293,7 +304,7 @@ app.post('/api/committee', upload.single('photo'), (req, res) => {
       return res.status(403).json({ success: false, message: 'কমিটি সদস্য সংযোজন বা পরিবর্তনের ক্ষমতা কেবল সুপার এডমিনের (Super Admin) হাতে সংরক্ষিত।' });
     }
 
-    const { name_bn, name_en, designation_bn, mobile, email, bio_bn, display_order, user_id, user_name } = req.body;
+    const { name_bn, name_en, designation_bn, mobile, whatsapp, address, profession, committee_type, email, bio_bn, display_order, user_id, user_name } = req.body;
     if (!name_bn || !designation_bn) {
       return res.status(400).json({ success: false, message: 'সদস্যের নাম ও পদবি প্রদান করুন।' });
     }
@@ -301,18 +312,22 @@ app.post('/api/committee', upload.single('photo'), (req, res) => {
     const photoUrl = req.file ? '/uploads/committee/' + req.file.filename : (req.body.photo_url || '');
 
     db.run(
-      `INSERT INTO committee_members (name_bn, name_en, designation_bn, mobile, email, photo_url, bio_bn, display_order, is_active, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))`,
+      `INSERT INTO committee_members (name_bn, name_en, designation_bn, mobile, whatsapp, address, profession, committee_type, email, photo_url, bio_bn, display_order, is_active, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))`,
       [
         name_bn.trim(), name_en || '', designation_bn.trim(),
-        mobile || '', email || '', photoUrl, bio_bn || '',
+        mobile || '', whatsapp || mobile || '', address || '',
+        profession || '', committee_type || 'পরিচালনা পরিষদ',
+        email || '', photoUrl, bio_bn || '',
         parseInt(display_order, 10) || 10
       ]
     );
 
     logAudit(user_id || 'admin', user_name || 'Super Admin', 'CREATE', 'committee', name_bn, `Added committee member: ${name_bn} (${designation_bn})`, req);
+    console.log(`[COMMITTEE] Added committee member: "${name_bn}" (${designation_bn})`);
     res.json({ success: true, message: 'কমিটি সদস্য সফলভাবে যুক্ত করা হয়েছে।', photoUrl });
   } catch (err) {
+    console.error('[COMMITTEE ADD ERROR]', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -323,7 +338,7 @@ app.put('/api/committee/:id', upload.single('photo'), (req, res) => {
       return res.status(403).json({ success: false, message: 'কমিটি সদস্য পরিবর্তনের ক্ষমতা কেবল সুপার এডমিনের (Super Admin) হাতে সংরক্ষিত।' });
     }
 
-    const { name_bn, name_en, designation_bn, mobile, email, bio_bn, display_order, user_id, user_name } = req.body;
+    const { name_bn, name_en, designation_bn, mobile, whatsapp, address, profession, committee_type, email, bio_bn, display_order, user_id, user_name } = req.body;
     const memberId = parseInt(req.params.id, 10);
     const existing = db.get('SELECT * FROM committee_members WHERE id = ?', [memberId]);
     if (!existing) {
@@ -334,7 +349,8 @@ app.put('/api/committee/:id', upload.single('photo'), (req, res) => {
 
     db.run(
       `UPDATE committee_members SET
-        name_bn = ?, name_en = ?, designation_bn = ?, mobile = ?, email = ?,
+        name_bn = ?, name_en = ?, designation_bn = ?, mobile = ?, whatsapp = ?,
+        address = ?, profession = ?, committee_type = ?, email = ?,
         photo_url = ?, bio_bn = ?, display_order = ?
        WHERE id = ?`,
       [
@@ -342,6 +358,10 @@ app.put('/api/committee/:id', upload.single('photo'), (req, res) => {
         name_en !== undefined ? name_en : existing.name_en,
         designation_bn ? designation_bn.trim() : existing.designation_bn,
         mobile !== undefined ? mobile : existing.mobile,
+        whatsapp !== undefined ? whatsapp : (existing.whatsapp || existing.mobile || ''),
+        address !== undefined ? address : (existing.address || ''),
+        profession !== undefined ? profession : (existing.profession || ''),
+        committee_type !== undefined ? committee_type : (existing.committee_type || 'পরিচালনা পরিষদ'),
         email !== undefined ? email : existing.email,
         photoUrl,
         bio_bn !== undefined ? bio_bn : existing.bio_bn,
@@ -351,8 +371,10 @@ app.put('/api/committee/:id', upload.single('photo'), (req, res) => {
     );
 
     logAudit(user_id || 'admin', user_name || 'Super Admin', 'UPDATE', 'committee', String(memberId), `Updated committee member: ${name_bn || existing.name_bn}`, req);
+    console.log(`[COMMITTEE] Updated committee member: "${name_bn || existing.name_bn}" (ID: ${memberId})`);
     res.json({ success: true, message: 'কমিটি সদস্যের তথ্য সফলভাবে হালনাগাদ করা হয়েছে।', photoUrl });
   } catch (err) {
+    console.error('[COMMITTEE UPDATE ERROR]', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -380,27 +402,38 @@ app.delete('/api/committee/:id', (req, res) => {
 // Database Backup Download Endpoint (One-Click Safe Download)
 app.get(['/api/system/backup', '/api/admin/download-backup'], (req, res) => {
   try {
-    db.saveDbToDisk();
-    const dbPath = path.join(__dirname, 'data', 'korje_hasena.sqlite');
-    if (!fs.existsSync(dbPath)) {
-      return res.status(404).json({ success: false, message: 'ডেটাবেজ ফাইল পাওয়া যায়নি।' });
-    }
-    const filename = `korje_hasena_backup_${new Date().toISOString().split('T')[0]}.sqlite`;
-    res.download(dbPath, filename);
+    const buffer = db.exportDbBuffer();
+    const filename = `korje_hasena_backup_${getDhakaDateStr()}_${Date.now()}.sqlite`;
+    res.setHeader('Content-Type', 'application/x-sqlite3');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Database Restore Endpoint
-app.post(['/api/system/restore', '/api/admin/restore-backup'], upload.single('backup'), (req, res) => {
+// Database Restore Endpoint (Accepts both 'backup' and 'backup_file' form fields)
+const uploadBackupMiddleware = (req, res, next) => {
+  upload.fields([{ name: 'backup', maxCount: 1 }, { name: 'backup_file', maxCount: 1 }])(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, error: err.message });
+    if (req.files) {
+      req.file = (req.files['backup'] && req.files['backup'][0]) || 
+                 (req.files['backup_file'] && req.files['backup_file'][0]) || 
+                 null;
+    }
+    next();
+  });
+};
+
+app.post(['/api/system/restore', '/api/admin/restore-backup'], uploadBackupMiddleware, (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'অনুগ্রহ করে একটি বৈধ .sqlite ব্যাকআপ ফাইল নির্বাচন করুন।' });
     }
     const buffer = fs.readFileSync(req.file.path);
     db.restoreDbFromBuffer(buffer);
-    fs.unlinkSync(req.file.path);
+    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    logAudit(req.body.user_id, req.body.user_name, 'RESTORE', 'system', 'db', 'Restored database from uploaded backup file', req);
     res.json({ success: true, message: 'ডেটাবেজ সফলভাবে রিস্টোর করা হয়েছে!' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -434,6 +467,9 @@ app.get('/api/public/summary', (req, res) => {
     const loansRepaid = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans')?.s || 0;
     const activeBeneficiaries = db.get('SELECT COUNT(DISTINCT applicant_id) as c FROM loans WHERE loan_status IN ("সক্রিয়", "মেয়াদোত্তীর্ণ")')?.c || 0;
     const completedLoans = db.get('SELECT COUNT(*) as c FROM loans WHERE loan_status = "সম্পূর্ণ পরিশোধিত"')?.c || 0;
+    const totalWelfareAid = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM welfare_grants')?.s || 0;
+    const welfareBeneficiariesCount = db.get('SELECT COALESCE(SUM(beneficiary_count), 0) as s FROM welfare_grants')?.s || 0;
+    const welfareActivitiesCount = db.get('SELECT COUNT(*) as c FROM welfare_grants')?.c || 0;
 
     res.json({
       success: true,
@@ -443,7 +479,10 @@ app.get('/api/public/summary', (req, res) => {
         loansDisbursed,
         loansRepaid,
         activeBeneficiaries,
-        completedLoans
+        completedLoans,
+        totalWelfareAid,
+        welfareBeneficiariesCount,
+        welfareActivitiesCount
       }
     });
   } catch (err) {
@@ -674,6 +713,12 @@ app.get('/api/dashboard/stats', (req, res) => {
     // Expenses
     const thisMonthExpenses = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM expenses WHERE status = "অনুমোদিত" AND date LIKE ?', [currentMonthPrefix + '%'])?.s || 0;
 
+    // Welfare Grants & Relief Aid
+    const totalWelfareAid = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM welfare_grants')?.s || 0;
+    const thisMonthWelfareAid = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM welfare_grants WHERE date LIKE ?', [currentMonthPrefix + '%'])?.s || 0;
+    const totalWelfareBeneficiaries = db.get('SELECT COALESCE(SUM(beneficiary_count), 0) as s FROM welfare_grants')?.s || 0;
+    const totalWelfareActivities = db.get('SELECT COUNT(*) as c FROM welfare_grants')?.c || 0;
+
     // Pending counts
     const pendingBkashCount = db.get('SELECT COUNT(*) as c FROM payment_submissions WHERE verification_status = "অপেক্ষমাণ"')?.c || 0;
     const pendingApplicationsCount = db.get('SELECT COUNT(*) as c FROM applications WHERE status IN ("জমা হয়েছে", "যাচাইাধীন", "অনুমোদনের অপেক্ষায়")')?.c || 0;
@@ -716,6 +761,10 @@ app.get('/api/dashboard/stats', (req, res) => {
         overdueCount,
         overdueAmount,
         thisMonthExpenses,
+        totalWelfareAid,
+        thisMonthWelfareAid,
+        totalWelfareBeneficiaries,
+        totalWelfareActivities,
         pendingBkashCount,
         pendingApplicationsCount,
         totalDonors,
@@ -775,21 +824,95 @@ app.post('/api/donors', upload.single('photo'), (req, res) => {
     const donorId = 'DON-' + Date.now().toString().slice(-6);
     const photoUrl = req.file ? '/uploads/' + req.file.filename : (b.photo_url || null);
 
+    const showOnWebsite = b.show_on_website !== undefined ? (b.show_on_website === '0' || b.show_on_website === 0 ? 0 : 1) : 1;
+
     db.run(
       `INSERT INTO donors (
         id, name_bn, name_en, mobile, whatsapp, email, address,
-        category, frequency, commitment_amount, preferred_payment_method, notes, photo_url, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'))`,
+        category, frequency, commitment_amount, preferred_payment_method, notes, photo_url, status, show_on_website, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, datetime('now'))`,
       [
         donorId, b.name_bn, b.name_en || '', b.mobile, b.whatsapp || b.mobile,
         b.email || '', b.address || '', b.category || 'এককালীন দাতা',
         b.frequency || 'এককালীন', parseFloat(b.commitment_amount) || 0,
-        b.preferred_payment_method || 'বিকাশ', b.notes || '', photoUrl
+        b.preferred_payment_method || 'বিকাশ', b.notes || '', photoUrl, showOnWebsite
       ]
     );
 
     logAudit(b.user_id, b.user_name, 'CREATE', 'donors', donorId, `Registered donor: ${b.name_bn}`, req);
+    console.log(`[DONOR] Successfully registered donor: "${b.name_bn}" with ID: ${donorId}`);
     res.json({ success: true, message: 'নতুন দাতা সফলভাবে নিবন্ধিত হয়েছে।', donorId, photoUrl });
+  } catch (err) {
+    console.error('[DONOR ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Update Donor Endpoint (Supports Photo Upload & Website Visibility)
+app.put('/api/donors/:id', upload.single('photo'), (req, res) => {
+  try {
+    const { id } = req.params;
+    const b = req.body;
+    const existing = db.get('SELECT * FROM donors WHERE id = ?', [id]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'দাতা খুঁজে পাওয়া যায়নি।' });
+    }
+
+    const photoUrl = req.file ? '/uploads/' + req.file.filename : (b.photo_url || existing.photo_url);
+    const showOnWebsite = b.show_on_website !== undefined ? (b.show_on_website === '0' || b.show_on_website === 0 ? 0 : 1) : (existing.show_on_website ?? 1);
+
+    db.run(
+      `UPDATE donors SET
+        name_bn = ?, name_en = ?, mobile = ?, whatsapp = ?, email = ?, address = ?,
+        category = ?, frequency = ?, commitment_amount = ?, preferred_payment_method = ?,
+        notes = ?, photo_url = ?, show_on_website = ?
+       WHERE id = ?`,
+      [
+        b.name_bn || existing.name_bn,
+        b.name_en !== undefined ? b.name_en : existing.name_en,
+        b.mobile || existing.mobile,
+        b.whatsapp !== undefined ? b.whatsapp : existing.whatsapp,
+        b.email !== undefined ? b.email : existing.email,
+        b.address !== undefined ? b.address : existing.address,
+        b.category || existing.category,
+        b.frequency || existing.frequency,
+        b.commitment_amount !== undefined ? parseFloat(b.commitment_amount) : existing.commitment_amount,
+        b.preferred_payment_method || existing.preferred_payment_method,
+        b.notes !== undefined ? b.notes : existing.notes,
+        photoUrl,
+        showOnWebsite,
+        id
+      ]
+    );
+
+    logAudit(b.user_id || req.headers['x-user-id'] || 'admin', b.user_name || 'Admin', 'UPDATE', 'donors', id, `Updated donor: ${b.name_bn || existing.name_bn}`, req);
+    res.json({ success: true, message: 'দাতার তথ্য ও ছবি সফলভাবে হালনাগাদ করা হয়েছে!', photoUrl });
+  } catch (err) {
+    console.error('[DONOR UPDATE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Public Featured Donors Endpoint (For Home/Dashboard Donor Box)
+app.get('/api/public/featured-donors', (req, res) => {
+  try {
+    const donors = db.query(
+      `SELECT id, name_bn, name_en, address, category, frequency, commitment_amount, photo_url, show_on_website, created_at
+       FROM donors
+       WHERE status = 'active' AND (show_on_website = 1 OR show_on_website IS NULL)
+       ORDER BY created_at DESC`
+    );
+
+    for (const donor of donors) {
+      const stats = db.get(
+        'SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM donations WHERE donor_id = ? AND status = "নিশ্চিত"',
+        [donor.id]
+      );
+      donor.totalDonated = stats.total || 0;
+      donor.donationCount = stats.count || 0;
+    }
+
+    res.json({ success: true, data: donors });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -823,6 +946,30 @@ app.get('/api/donors/:id', (req, res) => {
       }
     });
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/donors/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const donor = db.get('SELECT * FROM donors WHERE id = ?', [id]);
+    if (!donor) {
+      return res.status(404).json({ success: false, message: 'দাতা খুঁজে পাওয়া যায়নি।' });
+    }
+
+    db.transaction(({ run }) => {
+      // Disconnect donor from past donations so receipts remain financially accurate
+      run('UPDATE donations SET donor_id = NULL WHERE donor_id = ?', [id]);
+      // Permanently remove donor
+      run('DELETE FROM donors WHERE id = ?', [id]);
+    });
+
+    logAudit(req.headers['x-user-id'] || 'admin', req.headers['x-user-role'] || 'Admin', 'DELETE', 'donors', id, `Permanently deleted donor: ${donor.name_bn}`, req);
+    console.log(`[DONOR] Permanently deleted donor: "${donor.name_bn}" (${id})`);
+    res.json({ success: true, message: `দাতা "${donor.name_bn}" সফলভাবে চিরতরে মুছে ফেলা হয়েছে।` });
+  } catch (err) {
+    console.error('[DONOR DELETE ERROR]', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -935,6 +1082,7 @@ app.post('/api/donations', (req, res) => {
     });
 
     logAudit(b.user_id, b.user_name, 'CREATE', 'donations', donationId, `Recorded donation ৳${amount} from ${b.donor_name}`, req);
+    console.log(`[DONATION] Successfully recorded donation: ৳${amount} from "${b.donor_name}" (Receipt: ${receiptNumber})`);
     res.json({
       success: true,
       message: 'অনুদান সফলভাবে রেকর্ড করা হয়েছে।',
@@ -942,6 +1090,7 @@ app.post('/api/donations', (req, res) => {
       receiptNumber
     });
   } catch (err) {
+    console.error('[DONATION ERROR]', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -1646,6 +1795,291 @@ app.post('/api/expenses', (req, res) => {
   }
 });
 
+// =============================================================
+// 12.1 Non-Repayable Welfare Grants & Humanitarian Relief Aid
+// (এককালীন অনুদান, মানবিক সহায়তা, ঘর নির্মাণ, বাজার, চিকিৎসা ও দুর্যোগ ত্রাণ)
+// =============================================================
+app.get('/api/welfare-grants', (req, res) => {
+  try {
+    const { category, fund_id, q, start_date, end_date } = req.query;
+    let sql = `
+      SELECT wg.*, f.name_bn as fund_name, f.code as fund_code, fa.name_bn as account_name
+      FROM welfare_grants wg
+      JOIN funds f ON wg.fund_id = f.id
+      JOIN financial_accounts fa ON wg.account_id = fa.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (category) {
+      sql += ' AND wg.category = ?';
+      params.push(category);
+    }
+    if (fund_id) {
+      sql += ' AND wg.fund_id = ?';
+      params.push(parseInt(fund_id, 10));
+    }
+    if (start_date) {
+      sql += ' AND wg.date >= ?';
+      params.push(start_date);
+    }
+    if (end_date) {
+      sql += ' AND wg.date <= ?';
+      params.push(end_date);
+    }
+    if (q) {
+      sql += ' AND (wg.title_bn LIKE ? OR wg.beneficiary_name LIKE ? OR wg.beneficiary_address LIKE ? OR wg.voucher_no LIKE ? OR wg.id LIKE ?)';
+      const p = `%${q}%`;
+      params.push(p, p, p, p, p);
+    }
+
+    sql += ' ORDER BY wg.date DESC, wg.created_at DESC';
+
+    const grants = db.query(sql, params);
+    res.json({ success: true, data: grants });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/welfare-grants/:id', (req, res) => {
+  try {
+    const grant = db.get(
+      `SELECT wg.*, f.name_bn as fund_name, fa.name_bn as account_name
+       FROM welfare_grants wg
+       JOIN funds f ON wg.fund_id = f.id
+       JOIN financial_accounts fa ON wg.account_id = fa.id
+       WHERE wg.id = ?`,
+      [req.params.id]
+    );
+    if (!grant) {
+      return res.status(404).json({ success: false, message: 'ত্রাণ বা সহায়তার রেকর্ড পাওয়া যায়নি।' });
+    }
+    res.json({ success: true, data: grant });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Create new Welfare / Relief Grant
+app.post('/api/welfare-grants', upload.single('photo'), (req, res) => {
+  try {
+    const b = req.body;
+    if (!b.title_bn || !b.category || !b.beneficiary_name || !b.amount || !b.fund_id || !b.account_id) {
+      return res.status(400).json({ success: false, message: 'প্রয়োজনীয় সকল তথ্য (শিরোনাম, খাত, সুবিধাভোগীর নাম, পরিমাণ, তহবিল ও পরিশোধ হিসাব) প্রদান করুন।' });
+    }
+
+    const aidAmount = parseFloat(b.amount);
+    if (aidAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'সঠিক সহায়তার পরিমাণ লিখুন।' });
+    }
+
+    const accId = parseInt(b.account_id, 10);
+    const fundId = parseInt(b.fund_id, 10);
+
+    // Validate account liquid balance
+    const accOpen = db.get('SELECT opening_balance, name_bn FROM financial_accounts WHERE id = ?', [accId]);
+    const accIn = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "IN" AND status = "verified"', [accId])?.s || 0;
+    const accOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE account_id = ? AND direction = "OUT" AND status = "verified"', [accId])?.s || 0;
+    const currentBalance = (accOpen?.opening_balance || 0) + accIn - accOut;
+
+    if (currentBalance < aidAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `হিসাবটিতে (${accOpen?.name_bn}) পর্যাপ্ত ব্যালেন্স নেই। বর্তমান ব্যালেন্স: ৳${currentBalance}।`
+      });
+    }
+
+    const grantId = 'AID-' + Date.now().toString().slice(-6);
+    const voucherNo = (b.voucher_no && b.voucher_no.trim()) ? b.voucher_no.trim() : ('VOUCH-AID-' + Date.now().toString().slice(-6));
+    const trxId = 'TRX-' + Date.now().toString().slice(-6);
+    const aidDate = b.date || getDhakaDateStr();
+    const photoUrl = req.file ? '/uploads/welfare/' + req.file.filename : (b.photo_url || '');
+    const beneficiaryCount = parseInt(b.beneficiary_count, 10) || 1;
+
+    db.transaction(({ run }) => {
+      // 1. Insert into welfare_grants
+      run(
+        `INSERT INTO welfare_grants (
+          id, voucher_no, title_bn, category, beneficiary_name, beneficiary_mobile,
+          beneficiary_nid, beneficiary_address, beneficiary_count, amount,
+          fund_id, account_id, date, description, impact_notes, photo_url,
+          approved_by, entered_by, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'সম্পন্ন', datetime('now'))`,
+        [
+          grantId, voucherNo, b.title_bn.trim(), b.category.trim(),
+          b.beneficiary_name.trim(), b.beneficiary_mobile || '',
+          b.beneficiary_nid || '', b.beneficiary_address || 'রৌমারী, কুড়িগ্রাম',
+          beneficiaryCount, aidAmount, fundId, accId, aidDate,
+          b.description || '', b.impact_notes || '', photoUrl,
+          b.approved_by || 'উপদেষ্টা পরিষদ ও পরিচালনা কমিটি',
+          b.entered_by || 'হিসাব শাখা'
+        ]
+      );
+
+      // 2. Insert into transactions (direction: 'OUT')
+      run(
+        `INSERT INTO transactions (
+          id, date, type, account_id, fund_id, amount, direction,
+          related_entity_type, related_entity_id, reference_no, description_bn,
+          recorded_by, status, created_at
+        ) VALUES (?, ?, 'WELFARE_GRANT', ?, ?, ?, 'OUT', 'welfare_grants', ?, ?, ?, ?, 'verified', datetime('now'))`,
+        [
+          trxId, aidDate, accId, fundId, aidAmount, grantId, voucherNo,
+          `এককালীন মানবিক সহায়তা ও ত্রাণ: ${b.title_bn.trim()} [${b.category}] - সুবিধাভোগী: ${b.beneficiary_name.trim()}`,
+          b.entered_by || 'হিসাব শাখা'
+        ]
+      );
+    });
+
+    logAudit(b.user_id || 'admin', b.entered_by || 'Admin', 'CREATE', 'welfare_grants', grantId, `Disbursed welfare grant ৳${aidAmount} for ${b.title_bn} (${b.category}) to ${b.beneficiary_name}`, req);
+    console.log(`[WELFARE GRANT] Recorded aid: ৳${aidAmount} for "${b.title_bn}" (Voucher: ${voucherNo})`);
+
+    res.json({
+      success: true,
+      message: 'এককালীন ত্রাণ ও সহায়তা সফলভাবে সম্পন্ন এবং ক্যাশবুকে অন্তর্ভুক্ত হয়েছে।',
+      id: grantId,
+      voucher_no: voucherNo
+    });
+  } catch (err) {
+    console.error('[WELFARE GRANT ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Update an existing Welfare / Relief Grant
+app.put('/api/welfare-grants/:id', upload.single('photo'), (req, res) => {
+  try {
+    const grantId = req.params.id;
+    const existing = db.get('SELECT * FROM welfare_grants WHERE id = ?', [grantId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'ত্রাণ বা সহায়তার রেকর্ড পাওয়া যায়নি।' });
+    }
+
+    const b = req.body;
+    const aidAmount = b.amount ? parseFloat(b.amount) : existing.amount;
+    const accId = b.account_id ? parseInt(b.account_id, 10) : existing.account_id;
+    const fundId = b.fund_id ? parseInt(b.fund_id, 10) : existing.fund_id;
+    const aidDate = b.date || existing.date;
+    const voucherNo = (b.voucher_no && b.voucher_no.trim()) ? b.voucher_no.trim() : existing.voucher_no;
+    const photoUrl = req.file ? '/uploads/welfare/' + req.file.filename : (b.photo_url || existing.photo_url);
+    const beneficiaryCount = b.beneficiary_count ? parseInt(b.beneficiary_count, 10) : existing.beneficiary_count;
+
+    db.transaction(({ run }) => {
+      // 1. Update welfare_grants
+      run(
+        `UPDATE welfare_grants SET
+          voucher_no = ?, title_bn = ?, category = ?, beneficiary_name = ?,
+          beneficiary_mobile = ?, beneficiary_nid = ?, beneficiary_address = ?,
+          beneficiary_count = ?, amount = ?, fund_id = ?, account_id = ?,
+          date = ?, description = ?, impact_notes = ?, photo_url = ?,
+          approved_by = ?
+         WHERE id = ?`,
+        [
+          voucherNo, (b.title_bn || existing.title_bn).trim(),
+          (b.category || existing.category).trim(),
+          (b.beneficiary_name || existing.beneficiary_name).trim(),
+          b.beneficiary_mobile !== undefined ? b.beneficiary_mobile : existing.beneficiary_mobile,
+          b.beneficiary_nid !== undefined ? b.beneficiary_nid : existing.beneficiary_nid,
+          (b.beneficiary_address || existing.beneficiary_address).trim(),
+          beneficiaryCount, aidAmount, fundId, accId, aidDate,
+          b.description !== undefined ? b.description : existing.description,
+          b.impact_notes !== undefined ? b.impact_notes : existing.impact_notes,
+          photoUrl,
+          b.approved_by || existing.approved_by,
+          grantId
+        ]
+      );
+
+      // 2. Synchronize transactions ledger
+      run(
+        `UPDATE transactions SET
+          date = ?, account_id = ?, fund_id = ?, amount = ?, reference_no = ?,
+          description_bn = ?
+         WHERE related_entity_type = 'welfare_grants' AND related_entity_id = ?`,
+        [
+          aidDate, accId, fundId, aidAmount, voucherNo,
+          `এককালীন মানবিক সহায়তা ও ত্রাণ: ${(b.title_bn || existing.title_bn).trim()} [${(b.category || existing.category).trim()}] - সুবিধাভোগী: ${(b.beneficiary_name || existing.beneficiary_name).trim()}`,
+          grantId
+        ]
+      );
+    });
+
+    logAudit(b.user_id || 'admin', b.user_name || 'Admin', 'UPDATE', 'welfare_grants', grantId, `Updated welfare grant: ${existing.title_bn}`, req);
+    res.json({ success: true, message: 'তথ্য সফলভাবে হালনাগাদ করা হয়েছে।' });
+  } catch (err) {
+    console.error('[WELFARE UPDATE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete Welfare / Relief Grant (Super Admin only)
+app.delete('/api/welfare-grants/:id', (req, res) => {
+  try {
+    if (!isSuperAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'ত্রাণ বা অনুদান রেকর্ড মুছে ফেলার অনুমতি কেবল সুপার এডমিনের রয়েছে।' });
+    }
+
+    const grantId = req.params.id;
+    const existing = db.get('SELECT * FROM welfare_grants WHERE id = ?', [grantId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'রেকর্ড পাওয়া যায়নি।' });
+    }
+
+    db.transaction(({ run }) => {
+      // 1. Delete linked transaction ledger row
+      run(`DELETE FROM transactions WHERE related_entity_type = 'welfare_grants' AND related_entity_id = ?`, [grantId]);
+      // 2. Delete grant
+      run('DELETE FROM welfare_grants WHERE id = ?', [grantId]);
+    });
+
+    logAudit(req.query.user_id || 'admin', req.query.user_name || 'Super Admin', 'DELETE', 'welfare_grants', grantId, `Deleted welfare grant: ${existing.title_bn} (৳${existing.amount})`, req);
+    res.json({ success: true, message: 'রেকর্ড ও সংশ্লিষ্ট আর্থিক লেনদেন সফলভাবে মুছে ফেলা হয়েছে।' });
+  } catch (err) {
+    console.error('[WELFARE DELETE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Public Welfare Summary & Transparency
+app.get('/api/public/welfare-summary', (req, res) => {
+  try {
+    const totalAidSpent = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM welfare_grants')?.s || 0;
+    const totalBeneficiaries = db.get('SELECT COALESCE(SUM(beneficiary_count), 0) as s FROM welfare_grants')?.s || 0;
+    const totalActivities = db.get('SELECT COUNT(*) as c FROM welfare_grants')?.c || 0;
+
+    const categoryBreakdown = db.query(`
+      SELECT category, COUNT(*) as count, COALESCE(SUM(beneficiary_count), 0) as beneficiaries, COALESCE(SUM(amount), 0) as total_amount
+      FROM welfare_grants
+      GROUP BY category
+      ORDER BY total_amount DESC
+    `);
+
+    const recentGrants = db.query(`
+      SELECT wg.id, wg.voucher_no, wg.title_bn, wg.category, wg.beneficiary_name,
+             wg.beneficiary_address, wg.beneficiary_count, wg.amount, wg.date,
+             wg.description, wg.impact_notes, wg.photo_url, f.name_bn as fund_name
+      FROM welfare_grants wg
+      JOIN funds f ON wg.fund_id = f.id
+      ORDER BY wg.date DESC, wg.created_at DESC
+      LIMIT 30
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        totalAidSpent,
+        totalBeneficiaries,
+        totalActivities,
+        categoryBreakdown,
+        recentGrants
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 13. Inter-Account Transfers
 app.post('/api/transfers', (req, res) => {
   try {
@@ -1744,10 +2178,12 @@ app.get('/api/funds', (req, res) => {
       const donationIn = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = ? AND status = "নিশ্চিত"', [fund.id])?.s || 0;
       const loanDisb = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans WHERE fund_id = ?', [fund.id])?.s || 0;
       const loanRepaid = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans WHERE fund_id = ?', [fund.id])?.s || 0;
+      const welfareOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM welfare_grants WHERE fund_id = ?', [fund.id])?.s || 0;
       fund.total_donations = donationIn;
       fund.total_disbursed = loanDisb;
       fund.total_repaid = loanRepaid;
-      fund.current_balance = fund.opening_balance + donationIn - loanDisb + loanRepaid;
+      fund.total_welfare = welfareOut;
+      fund.current_balance = fund.opening_balance + donationIn - loanDisb + loanRepaid - welfareOut;
     }
     res.json({ success: true, data: funds });
   } catch (err) {
@@ -1805,24 +2241,30 @@ app.get('/api/reports/income-expenditure', (req, res) => {
     const { start_date, end_date } = req.query;
     let donSql = 'SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE status = "নিশ্চিত"';
     let expSql = 'SELECT category, COALESCE(SUM(amount), 0) as s FROM expenses WHERE status = "অনুমোদিত"';
+    let welSql = 'SELECT category, COALESCE(SUM(amount), 0) as s FROM welfare_grants WHERE 1=1';
     const params = [];
     const expParams = [];
+    const welParams = [];
 
     if (start_date && end_date) {
       donSql += ' AND date >= ? AND date <= ?';
       params.push(start_date, end_date);
       expSql += ' AND date >= ? AND date <= ?';
       expParams.push(start_date, end_date);
+      welSql += ' AND date >= ? AND date <= ?';
+      welParams.push(start_date, end_date);
     }
     expSql += ' GROUP BY category';
+    welSql += ' GROUP BY category';
 
     const totalDonationIncome = db.get(donSql, params)?.s || 0;
     const expenseBreakdown = db.query(expSql, expParams);
+    const welfareBreakdown = db.query(welSql, welParams);
     const totalExpenses = expenseBreakdown.reduce((sum, e) => sum + e.s, 0);
+    const totalWelfareAid = welfareBreakdown.reduce((sum, w) => sum + w.s, 0);
 
-    // Accounting check:
-    // Loan disbursements and repayments are Balance Sheet asset shifts, NOT operational income/expenditure!
-    const surplus = totalDonationIncome - totalExpenses;
+    const totalAllExpenditure = totalExpenses + totalWelfareAid;
+    const surplus = totalDonationIncome - totalAllExpenditure;
 
     res.json({
       success: true,
@@ -1835,6 +2277,11 @@ app.get('/api/reports/income-expenditure', (req, res) => {
           breakdown: expenseBreakdown,
           total: totalExpenses
         },
+        welfareAid: {
+          breakdown: welfareBreakdown,
+          total: totalWelfareAid
+        },
+        totalExpenditure: totalAllExpenditure,
         netSurplus: surplus
       }
     });
@@ -1874,7 +2321,8 @@ app.get('/api/reports/balance-sheet', (req, res) => {
       const don = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = ? AND status = "নিশ্চিত"', [f.id])?.s || 0;
       const disb = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans WHERE fund_id = ?', [f.id])?.s || 0;
       const rep = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans WHERE fund_id = ?', [f.id])?.s || 0;
-      const bal = f.opening_balance + don - disb + rep;
+      const welfareOut = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM welfare_grants WHERE fund_id = ?', [f.id])?.s || 0;
+      const bal = f.opening_balance + don - disb + rep - welfareOut;
       totalFundsBalance += bal;
       return { id: f.id, name_bn: f.name_bn, code: f.code, is_restricted: f.is_restricted, balance: bal };
     });
@@ -1920,35 +2368,12 @@ app.get('/api/audit-logs', (req, res) => {
   }
 });
 
-// 17. System Backup & Restore
-app.get('/api/system/backup', (req, res) => {
-  try {
-    const buffer = db.exportDbBuffer();
-    const filename = `korje_hasena_backup_${getDhakaDateStr()}_${Date.now()}.sqlite`;
-    res.setHeader('Content-Type', 'application/x-sqlite3');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(buffer);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+// 404 handler for unmatched API routes
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, message: 'এপিআই এন্ডপয়েন্ট পাওয়া যায়নি (API route not found)' });
 });
 
-app.post('/api/system/restore', upload.single('backup_file'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'ব্যাকআপ ফাইল আপলোড করুন।' });
-    }
-    const buffer = fs.readFileSync(req.file.path);
-    db.restoreDbFromBuffer(buffer);
-    fs.unlinkSync(req.file.path); // cleanup uploaded temp
-    logAudit(req.body.user_id, req.body.user_name, 'RESTORE', 'system', 'db', 'Restored database from uploaded backup file', req);
-    res.json({ success: true, message: 'ডাটাবেজ সফলভাবে রিস্টোর করা হয়েছে!' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Fallback to index.html for SPA
+// Fallback to index.html for SPA frontend routing
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

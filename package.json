@@ -1,18 +1,27 @@
 {
   "name": "korje-hasena",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "test": "node test_suite.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "korje-hasena",
+    "islamic-microfinance",
+    "charity",
+    "interest-free-loan"
+  ],
+  "author": "MD SHAH ALAM",
   "license": "ISC",
-  "description": "",
+  "description": "Karje Hasana Foundation Management System",
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.3.0",
     "multer": "^2.4.0",
     "sql.js": "^1.14.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

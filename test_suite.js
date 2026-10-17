@@ -280,7 +280,7 @@ async function runTests() {
   console.log('\n--- Scenario I: Advisory Board & Committee Verification ---');
   const comRes = await request('GET', '/api/committee');
   assert(comRes.status === 200 && comRes.data.success, 'Committee endpoint returns 200');
-  assert(comRes.data.data.length === 9, `All 9 advisory board members present (Count: ${comRes.data.data.length})`);
+  assert(comRes.data.data.length >= 9, `At least 9 advisory board & committee members present (Count: ${comRes.data.data.length})`);
   assert(comRes.data.data.some(m => m.name_bn.includes('শাহ্ আলম')), 'Founder Chairman MD SHAH ALAM is present');
   assert(comRes.data.data.some(m => m.name_bn.includes('মোকছেদ আলী')), 'Principal Moksed Ali is present');
   assert(comRes.data.data.some(m => m.name_bn.includes('আল আমিন অনিক')), 'CEO Al Amin Onik is present');

@@ -2,13 +2,34 @@ const fs = require('fs');
 const path = require('path');
 const initSqlJs = require('sql.js');
 
-const DB_PATH = path.join(__dirname, 'data', 'korje_hasena.sqlite');
+const DB_DIR = path.join(__dirname, 'data');
+const DB_PATH = path.join(DB_DIR, 'korje_hasena.sqlite');
 
 let dbInstance = null;
 let SQL = null;
 
 async function getDb() {
   if (dbInstance) return dbInstance;
+
+  // Auto-create data directory if missing (e.g. on Render or fresh clone)
+  if (!fs.existsSync(DB_DIR)) {
+    try {
+      fs.mkdirSync(DB_DIR, { recursive: true });
+    } catch (e) {
+      console.error('[DB] Error creating data directory:', e);
+    }
+  }
+
+  // If database was committed to root repository, copy to data directory
+  const rootDbPath = path.join(__dirname, 'korje_hasena.sqlite');
+  if (!fs.existsSync(DB_PATH) && fs.existsSync(rootDbPath)) {
+    try {
+      fs.copyFileSync(rootDbPath, DB_PATH);
+      console.log('[DB] Found korje_hasena.sqlite in root; copied to data/korje_hasena.sqlite');
+    } catch (e) {
+      console.error('[DB] Error copying root db to data directory:', e);
+    }
+  }
 
   SQL = await initSqlJs();
 
@@ -36,6 +57,10 @@ async function getDb() {
 function saveDbToDisk() {
   if (!dbInstance) return;
   try {
+    const dir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
     const data = dbInstance.export();
     const buffer = Buffer.from(data);
     fs.writeFileSync(DB_PATH, buffer);
@@ -378,14 +403,43 @@ function initSchema(db) {
       is_active INTEGER DEFAULT 1,
       created_at TEXT NOT NULL
     );
+
+    -- Welfare Grants & Humanitarian Relief (One-time, non-repayable aid: housing, food rations, medical, blankets, disaster relief)
+    CREATE TABLE IF NOT EXISTS welfare_grants (
+      id TEXT PRIMARY KEY,
+      voucher_no TEXT UNIQUE NOT NULL,
+      title_bn TEXT NOT NULL,
+      category TEXT NOT NULL,
+      beneficiary_name TEXT NOT NULL,
+      beneficiary_mobile TEXT,
+      beneficiary_nid TEXT,
+      beneficiary_address TEXT NOT NULL,
+      beneficiary_count INTEGER DEFAULT 1,
+      amount REAL NOT NULL,
+      fund_id INTEGER NOT NULL,
+      account_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      description TEXT NOT NULL,
+      impact_notes TEXT,
+      photo_url TEXT,
+      approved_by TEXT NOT NULL,
+      entered_by TEXT NOT NULL,
+      status TEXT DEFAULT 'সম্পন্ন',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (fund_id) REFERENCES funds(id),
+      FOREIGN KEY (account_id) REFERENCES financial_accounts(id)
+    );
   `);
 
-  // Column migration for donors photo_url
-  try {
-    db.run("ALTER TABLE donors ADD COLUMN photo_url TEXT;");
-  } catch (e) {
-    // Already exists
-  }
+  // Column migration for donors photo_url and show_on_website
+  try { db.run("ALTER TABLE donors ADD COLUMN photo_url TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE donors ADD COLUMN show_on_website INTEGER DEFAULT 1;"); } catch (e) {}
+
+  // Column migrations for committee_members: whatsapp, address, profession, committee_type
+  try { db.run("ALTER TABLE committee_members ADD COLUMN whatsapp TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE committee_members ADD COLUMN address TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE committee_members ADD COLUMN profession TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE committee_members ADD COLUMN committee_type TEXT DEFAULT 'পরিচালনা পরিষদ';"); } catch (e) {}
 
   // Seed Default Advisory Board / Committee Members if empty
   try {
@@ -393,16 +447,16 @@ function initSchema(db) {
     const comCount = comCheck[0]?.values[0][0] || 0;
     if (comCount === 0) {
       db.run(`
-        INSERT INTO committee_members (id, name_bn, name_en, designation_bn, mobile, email, photo_url, bio_bn, display_order, is_active, created_at) VALUES
-        (1, 'জনাব মোঃ শাহ্ আলম ইসলাম', 'MD SHAH ALAM', 'প্রতিষ্ঠাতা চেয়ারম্যান ও ম্যানেজিং ডিরেক্টর, লাইফ কেয়ার হাসপাতাল রৌমারী', '01966442769', 'shahalal.siraz@gmail.com', '/uploads/committee/member_1_shah_alam.jpg', 'প্রতিষ্ঠাতা চেয়ারম্যান, কর্জে হাসানা ফাউন্ডেশন ও ম্যানেজিং ডিরেক্টর, লাইফ কেয়ার হাসপাতাল রৌমারী', 1, 1, datetime('now')),
-        (2, 'হযরত মাওলানা মোঃ মোকছেদ আলী', 'Mawlana Md Moksed Ali', 'প্রধান উপদেষ্টা ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা', '01914638313', 'moksed.ali@karjehasana.org', '/uploads/committee/member_2_moksed_ali.jpg', 'বিশিষ্ট ইসলামী শিক্ষাবিদ ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা', 2, 1, datetime('now')),
-        (3, 'জনাব মোঃ বাবুল হোসেন', 'Md Babul Hossain', 'উপদেষ্টা ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী', '01931649576', 'babul.hossain@karjehasana.org', '/uploads/committee/member_3_babul_hossain.jpg', 'বিশিষ্ট ব্যবসায়ী, সমাজসেবক ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী', 3, 1, datetime('now')),
-        (4, 'হযরত মাওলানা মোঃ আনোয়ারুল ইসলাম', 'Mawlana Md Anwarul Islam', 'শরীয়াহ উপদেষ্টা ও প্রধান ফকিহ, কুড়িগ্রাম আলিয়া মাদ্রাসা', '01911086469', 'anwarul.islam@karjehasana.org', '/uploads/committee/member_4_anwarul_islam.jpg', 'বিশিষ্ট ইসলামী আইন ও শরীয়াহ বিশেষজ্ঞ, প্রধান ফকিহ, কুড়িগ্রাম আলিয়া মাদ্রাসা', 4, 1, datetime('now')),
-        (5, 'জনাব মোঃ মাহবুব আলম', 'Md Mahbub Alam', 'উপদেষ্টা ও চেয়ারম্যান, রৌমারী জেনারেল হাসপাতাল এন্ড ডায়াগনস্টিক সেন্টার', '01915604026', 'mahbub.alam@karjehasana.org', '/uploads/committee/member_5_mahbub_alam.jpg', 'বিশিষ্ট সমাজসেবক ও চেয়ারম্যান, রৌমারী জেনারেল হাসপাতাল এন্ড ডায়াগনস্টিক সেন্টার', 5, 1, datetime('now')),
-        (6, 'হাফেজ হযরত মাওলানা মোঃ রিয়াজুল ইসলাম', 'Hafez Mawlana Md Riazul Islam', 'উপদেষ্টা ও বিশিষ্ট তরুণ বক্তা', '01921970377', 'riazul.islam@karjehasana.org', '/uploads/committee/member_6_riazul_islam.jpg', 'জনপ্রিয় ইসলামী আলোচক ও তরুণ বক্তা', 6, 1, datetime('now')),
-        (7, 'জনাব মোঃ সাইদুল ইসলাম সাইদ', 'Md Saidul Islam Said', 'উপদেষ্টা ও বিশিষ্ট সমাজসেবক', '01716882049', 'saidul.islam@karjehasana.org', '/uploads/committee/member_7_saidul_islam.jpg', 'বিশিষ্ট সমাজসেবক ও শুভাকাঙ্ক্ষী, রৌমারী', 7, 1, datetime('now')),
-        (8, 'হাফেজ হযরত মাওলানা মোঃ মাইদুল ইসলাম', 'Hafez Mawlana Md Maidul Islam', 'উপদেষ্টা ও বিশিষ্ট তরুণ বক্তা', '01920114330', 'maidul.islam@karjehasana.org', '/uploads/committee/member_8_maidul_islam.jpg', 'জনপ্রিয় ইসলামী আলোচক ও তরুণ বক্তা', 8, 1, datetime('now')),
-        (9, 'জনাব মোঃ আল আমিন অনিক', 'MD AL AMIN ONIK', 'উপদেষ্টা ও CEO, ঢাকা এয়ার ট্রাভেলস, রৌমারী, কুড়িগ্রাম', '01832630299', 'alamin.onik@karjehasana.org', '/uploads/committee/member_9_al_amin_onik.jpg', 'CEO, DHAKA AIR TRAVELS, ROWMARI, KURIGRAM', 9, 1, datetime('now'));
+        INSERT INTO committee_members (id, name_bn, name_en, designation_bn, committee_type, mobile, email, photo_url, bio_bn, display_order, is_active, created_at) VALUES
+        (1, 'জনাব মোঃ শাহ্ আলম ইসলাম', 'MD SHAH ALAM', 'প্রতিষ্ঠাতা চেয়ারম্যান ও ম্যানেজিং ডিরেক্টর, লাইফ কেয়ার হাসপাতাল রৌমারী', 'উপদেষ্টা পরিষদ', '01966442769', 'shahalal.siraz@gmail.com', '/uploads/committee/member_1_shah_alam.jpg', 'প্রতিষ্ঠাতা চেয়ারম্যান, কর্জে হাসানা ফাউন্ডেশন ও ম্যানেজিং ডিরেক্টর, লাইফ কেয়ার হাসপাতাল রৌমারী', 1, 1, datetime('now')),
+        (2, 'হযরত মাওলানা মোঃ মোকছেদ আলী', 'Mawlana Md Moksed Ali', 'প্রধান উপদেষ্টা ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা', 'উপদেষ্টা পরিষদ', '01914638313', 'moksed.ali@karjehasana.org', '/uploads/committee/member_2_moksed_ali.jpg', 'বিশিষ্ট ইসলামী শিক্ষাবিদ ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা', 2, 1, datetime('now')),
+        (3, 'জনাব মোঃ বাবুল হোসেন', 'Md Babul Hossain', 'উপদেষ্টা ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী', 'উপদেষ্টা পরিষদ', '01931649576', 'babul.hossain@karjehasana.org', '/uploads/committee/member_3_babul_hossain.jpg', 'বিশিষ্ট ব্যবসায়ী, সমাজসেবক ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী', 3, 1, datetime('now')),
+        (4, 'হযরত মাওলানা মোঃ আনোয়ারুল ইসলাম', 'Mawlana Md Anwarul Islam', 'শরীয়াহ উপদেষ্টা ও প্রধান ফকিহ, কুড়িগ্রাম আলিয়া মাদ্রাসা', 'উপদেষ্টা পরিষদ', '01911086469', 'anwarul.islam@karjehasana.org', '/uploads/committee/member_4_anwarul_islam.jpg', 'বিশিষ্ট ইসলামী আইন ও শরীয়াহ বিশেষজ্ঞ, প্রধান ফকিহ, কুড়িগ্রাম আলিয়া মাদ্রাসা', 4, 1, datetime('now')),
+        (5, 'জনাব মোঃ মাহবুব আলম', 'Md Mahbub Alam', 'উপদেষ্টা ও চেয়ারম্যান, রৌমারী জেনারেল হাসপাতাল এন্ড ডায়াগনস্টিক সেন্টার', 'উপদেষ্টা পরিষদ', '01915604026', 'mahbub.alam@karjehasana.org', '/uploads/committee/member_5_mahbub_alam.jpg', 'বিশিষ্ট সমাজসেবক ও চেয়ারম্যান, রৌমারী জেনারেল হাসপাতাল এন্ড ডায়াগনস্টিক সেন্টার', 5, 1, datetime('now')),
+        (6, 'হাফেজ হযরত মাওলানা মোঃ রিয়াজুল ইসলাম', 'Hafez Mawlana Md Riazul Islam', 'উপদেষ্টা ও বিশিষ্ট তরুণ বক্তা', 'উপদেষ্টা পরিষদ', '01921970377', 'riazul.islam@karjehasana.org', '/uploads/committee/member_6_riazul_islam.jpg', 'জনপ্রিয় ইসলামী আলোচক ও তরুণ বক্তা', 6, 1, datetime('now')),
+        (7, 'জনাব মোঃ সাইদুল ইসলাম সাইদ', 'Md Saidul Islam Said', 'উপদেষ্টা ও বিশিষ্ট সমাজসেবক', 'উপদেষ্টা পরিষদ', '01716882049', 'saidul.islam@karjehasana.org', '/uploads/committee/member_7_saidul_islam.jpg', 'বিশিষ্ট সমাজসেবক ও শুভাকাঙ্ক্ষী, রৌমারী', 7, 1, datetime('now')),
+        (8, 'হাফেজ হযরত মাওলানা মোঃ মাইদুল ইসলাম', 'Hafez Mawlana Md Maidul Islam', 'উপদেষ্টা ও বিশিষ্ট তরুণ বক্তা', 'উপদেষ্টা পরিষদ', '01920114330', 'maidul.islam@karjehasana.org', '/uploads/committee/member_8_maidul_islam.jpg', 'জনপ্রিয় ইসলামী আলোচক ও তরুণ বক্তা', 8, 1, datetime('now')),
+        (9, 'জনাব মোঃ আল আমিন অনিক', 'MD AL AMIN ONIK', 'উপদেষ্টা ও CEO, ঢাকা এয়ার ট্রাভেলস, রৌমারী, কুড়িগ্রাম', 'উপদেষ্টা পরিষদ', '01832630299', 'alamin.onik@karjehasana.org', '/uploads/committee/member_9_al_amin_onik.jpg', 'CEO, DHAKA AIR TRAVELS, ROWMARI, KURIGRAM', 9, 1, datetime('now'));
       `);
     }
   } catch (err) {
