@@ -29,7 +29,7 @@ const AdminViews = {
                 <th>ক্যাটাগরি</th>
                 <th>প্রতিশ্রুতি/ফ্রিকোয়েন্সি</th>
                 <th>মোট প্রকৃত দান</th>
-                <th>দান সংখ্যা</th>
+                <th>ওয়েবসাইট প্রদর্শন</th>
                 <th>অ্যাকশন</th>
               </tr>
             </thead>
@@ -52,11 +52,17 @@ const AdminViews = {
                   <td><span class="status-badge active">${d.category}</span></td>
                   <td>৳ ${bnNum(d.commitment_amount || 0)} (${d.frequency || 'এককালীন'})</td>
                   <td style="font-weight: 700; color: #075B3B;">৳ ${bnNum(d.totalDonated || 0)}</td>
-                  <td>${bnNum(d.donationCount || 0)} টি</td>
+                  <td>
+                    ${d.show_on_website !== 0 
+                      ? '<span class="status-badge active" style="font-size:0.75rem; background:#e8f5ec; color:#075b3b; font-weight:700;">✓ প্রকাশ্য</span>' 
+                      : '<span class="status-badge" style="background:#e9ecef; color:#6c757d; font-size:0.75rem;">লুকানো</span>'}
+                  </td>
                   <td>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                      <button class="btn btn-sm btn-gold" onclick="App.openDonationForDonor('${d.id}')" title="এই দাতার অনুদান জমা করুন">💵 অনুদান জমা</button>
+                      <button class="btn btn-sm btn-gold" onclick="App.openDonationForDonor('${d.id}')" title="এই দাতার অনুদান জমা করুন">💵 অনুদান</button>
+                      <button class="btn btn-sm btn-primary" onclick="App.openEditDonorModal('${d.id}')" title="দাতার ছবি ও তথ্য সম্পাদনা">✏️ এডিট ও ছবি</button>
                       <button class="btn btn-sm btn-outline-green" onclick="App.viewDonorProfile('${d.id}')">প্রোফাইল</button>
+                      <button class="btn btn-sm" style="background: #dc3545; color: white; border: none; padding: 4px 10px; font-size: 0.82rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; font-weight: 500;" onclick="App.deleteDonor('${d.id}', '${(d.name_bn || '').replace(/'/g, "\\'")}')" title="এই দাতা স্থায়ীভাবে মুছে ফেলুন">🗑️ মুছুন</button>
                     </div>
                   </td>
                 </tr>
@@ -524,7 +530,11 @@ const AdminViews = {
                   <td>${t.date}</td>
                   <td style="font-family: var(--font-en); font-size: 0.85rem;">${t.id}</td>
                   <td>${t.account_name}</td>
-                  <td>${t.type}</td>
+                  <td>
+                    <span class="status-badge ${t.direction === 'IN' ? 'verified' : 'rejected'}">
+                      ${t.type === 'WELFARE_GRANT' ? 'এককালীন অনুদান/ত্রাণ' : (t.type === 'DISBURSEMENT' ? 'ঋণ বিতরণ' : (t.type === 'REPAYMENT' ? 'ধার ফেরত' : (t.type === 'DONATION' ? 'অনুদান' : (t.type === 'EXPENSE' ? 'সাধারণ ব্যয়' : t.type))))}
+                    </span>
+                  </td>
                   <td style="font-weight: 700; color: #075B3B;">
                     ${t.direction === 'IN' ? `+ ৳ ${bnNum(t.amount)}` : '-'}
                   </td>
@@ -579,6 +589,189 @@ const AdminViews = {
                 </tr>
               `).join('')}
               ${expenses.length === 0 ? `<tr><td colspan="8" style="text-align: center; color: #777;">কোনো ব্যয়ের রেকর্ড নেই।</td></tr>` : ''}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  // 9.1 Welfare Grants & Non-Repayable Relief Aid Management
+  renderWelfareGrants(grants = [], funds = [], accounts = []) {
+    const totalSpent = grants.reduce((sum, g) => sum + (parseFloat(g.amount) || 0), 0);
+    const totalBeneficiaries = grants.reduce((sum, g) => sum + (parseInt(g.beneficiary_count, 10) || 1), 0);
+    const categories = [
+      'সব খাত',
+      'গৃহহীনদের ঘর নির্মাণ',
+      'খাদ্য ও নিত্যপণ্য বাজার সহায়তা',
+      'জরুরি চিকিৎসা সহায়তা',
+      'শীতবস্ত্র ও কম্বল বিতরণ',
+      'দুর্যোগ ও বন্যা ত্রাণ',
+      'শিক্ষা সহায়তা ও উপকরণ',
+      'অন্যান্য'
+    ];
+
+    return `
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+              <span>🌾 এককালীন অনুদান, মানবিক সহায়তা ও ত্রাণ ব্যবস্থাপনা</span>
+              <span class="badge" style="background: #075B3B; color: white;">অডিট ও স্বচ্ছতা</span>
+            </div>
+            <div style="font-size: 0.86rem; color: #52665D; margin-top: 4px;">
+              গৃহহীনদের ঘর নির্মাণ, খাদ্য ও বাজার সহায়তা, জরুরি চিকিৎসা, শীতকালীন কম্বল ও দুর্যোগ ব্যবস্থাপনায় অ-ফেরতযোগ্য ব্যয়ের হিসাব
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-primary btn-sm" onclick="App.openModal('welfare_grant')">
+              ➕ নতুন ত্রাণ / এককালীন সহায়তা প্রদান
+            </button>
+            <button class="btn btn-outline-green btn-sm" onclick="window.print()">
+              🖨️ অডিট রিপোর্ট প্রিন্ট
+            </button>
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="stats-grid" style="margin-bottom: 24px;">
+          <div class="stat-card" style="border-left: 4px solid #C62828;">
+            <div class="stat-icon" style="background: #FFEBEE; color: #C62828;">💰</div>
+            <div class="stat-info">
+              <h4>মোট ব্যয়িত এককালীন সহায়তা</h4>
+              <div class="stat-value" style="color: #C62828;">৳ ${bnNum(totalSpent)}</div>
+              <div style="font-size: 0.8rem; color: #777;">সরাসরি অ-ফেরতযোগ্য দান ও ত্রাণ</div>
+            </div>
+          </div>
+
+          <div class="stat-card" style="border-left: 4px solid #075B3B;">
+            <div class="stat-icon green">👨‍👩‍👧‍👦</div>
+            <div class="stat-info">
+              <h4>মোট উপকৃত ব্যক্তি / পরিবার</h4>
+              <div class="stat-value" style="color: #075B3B;">${bnNum(totalBeneficiaries)} জন/পরিবার</div>
+              <div style="font-size: 0.8rem; color: #777;">রৌমারী ও সংশ্লিষ্ট এলাকা</div>
+            </div>
+          </div>
+
+          <div class="stat-card" style="border-left: 4px solid #D9B84C;">
+            <div class="stat-icon gold">📋</div>
+            <div class="stat-info">
+              <h4>পরিচালিত ত্রাণ কার্যক্রম</h4>
+              <div class="stat-value">${bnNum(grants.length)} টি প্রকল্প</div>
+              <div style="font-size: 0.8rem; color: #777;">সম্পূর্ণ ভাউচারসহ সংরক্ষিত</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter and Search Row -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; background: #FAF8F5; padding: 12px 16px; border-radius: 8px; border: 1px solid #EAE0D5;">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <label style="font-weight: 600; font-size: 0.9rem; color: #075B3B; margin: 0;">খাত অনুযায়ী ফিল্টার:</label>
+            <select id="welfareCategoryFilter" class="form-control" style="width: auto; min-width: 200px; padding: 6px 10px;" onchange="App.filterWelfareGrants()">
+              ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+            </select>
+          </div>
+          <div style="display: flex; gap: 8px; flex: 1; max-width: 380px;">
+            <input type="text" id="welfareSearchInput" class="form-control" placeholder="🔍 শিরোনাম, গ্রহীতা, গ্রাম বা ভাউচার..." oninput="App.filterWelfareGrants()">
+          </div>
+        </div>
+
+        <!-- Detailed Grants Audit Table -->
+        <div class="table-responsive">
+          <table class="data-table" id="welfareGrantsTable">
+            <thead>
+              <tr>
+                <th>তারিখ ও ভাউচার</th>
+                <th>খাত ও শিরোনাম</th>
+                <th>সুবিধাভোগী ও এলাকা</th>
+                <th>উপকৃত সংখ্যা</th>
+                <th>তহবিল ও পরিশোধ হিসাব</th>
+                <th style="text-align: right;">পরিমাণ (৳)</th>
+                <th>প্রমাণক ছবি</th>
+                <th>অনুমোদক</th>
+                <th style="text-align: center;">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${grants.map(g => {
+                let catBadgeColor = '#075B3B';
+                if (g.category.includes('ঘর')) catBadgeColor = '#b26a00';
+                else if (g.category.includes('খাদ্য') || g.category.includes('বাজার')) catBadgeColor = '#1565c0';
+                else if (g.category.includes('চিকিৎসা')) catBadgeColor = '#c2185b';
+                else if (g.category.includes('শীত') || g.category.includes('কম্বল')) catBadgeColor = '#00838f';
+                else if (g.category.includes('দুর্যোগ') || g.category.includes('ত্রাণ')) catBadgeColor = '#d32f2f';
+
+                return `
+                  <tr class="welfare-grant-row" data-category="${g.category}" data-search="${(g.title_bn + ' ' + g.beneficiary_name + ' ' + (g.beneficiary_address || '') + ' ' + (g.voucher_no || '')).toLowerCase()}">
+                    <td>
+                      <div style="font-weight: 700;">${g.date}</div>
+                      <div style="font-family: var(--font-en); font-size: 0.8rem; color: #52665D;">${g.voucher_no || g.id}</div>
+                    </td>
+                    <td>
+                      <span class="status-badge" style="background: ${catBadgeColor}15; color: ${catBadgeColor}; border: 1px solid ${catBadgeColor}40; margin-bottom: 4px; display: inline-block;">
+                        ${g.category}
+                      </span>
+                      <div style="font-weight: 700; color: #1c3b2b;">${g.title_bn}</div>
+                      ${g.impact_notes ? `<div style="font-size: 0.8rem; color: #555; margin-top: 2px;">💡 ${g.impact_notes}</div>` : ''}
+                    </td>
+                    <td>
+                      <div style="font-weight: 700;">${g.beneficiary_name}</div>
+                      <div style="font-size: 0.82rem; color: #555;">📍 ${g.beneficiary_address || 'রৌমারী'}</div>
+                      ${g.beneficiary_mobile ? `<div style="font-family: var(--font-en); font-size: 0.8rem; color: #075B3B;">📞 ${g.beneficiary_mobile}</div>` : ''}
+                    </td>
+                    <td>
+                      <span class="badge" style="background: #E8F5EC; color: #075B3B; font-weight: 700;">
+                        ${bnNum(g.beneficiary_count || 1)} জন/পরিবার
+                      </span>
+                    </td>
+                    <td>
+                      <div style="font-size: 0.85rem; font-weight: 600;">${g.fund_name || 'তহবিল'}</div>
+                      <div style="font-size: 0.8rem; color: #52665D;">${g.account_name || 'ক্যাশ'}</div>
+                    </td>
+                    <td style="text-align: right; font-weight: 800; color: #C62828; font-size: 1.05rem;">
+                      - ৳ ${bnNum(g.amount)}
+                    </td>
+                    <td style="text-align: center;">
+                      ${g.photo_url ? `
+                        <img 
+                          src="${g.photo_url}" 
+                          alt="ছবি" 
+                          style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 1px solid #D3E4DB;"
+                          onclick="App.openImagePreview('${g.photo_url}', '${g.title_bn}')"
+                          title="বড় করে দেখতে ক্লিক করুন"
+                        >
+                      ` : '<span style="color: #999; font-size: 0.8rem;">সংযুক্ত নেই</span>'}
+                    </td>
+                    <td>
+                      <div style="font-size: 0.85rem;">${g.approved_by || 'কর্তৃপক্ষ'}</div>
+                      <div style="font-size: 0.75rem; color: #888;">এন্ট্রি: ${g.entered_by || 'হিসাব শাখা'}</div>
+                    </td>
+                    <td style="text-align: center;">
+                      <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                        <button class="btn btn-outline-green btn-sm" onclick="App.viewWelfareVoucher('${g.id}')" title="অফিশিয়াল ভাউচার রসিদ দেখুন ও প্রিন্ট করুন" style="padding: 4px 8px;">
+                          📄 ভাউচার
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="App.openEditWelfareModal('${g.id}')" title="এডিট করুন" style="padding: 4px 8px;">
+                          ✏️
+                        </button>
+                        <button class="btn btn-outline btn-sm" style="color: #C62828; border-color: #C62828; padding: 4px 8px;" onclick="App.handleDeleteWelfareGrant('${g.id}', '${g.title_bn}')" title="মুছে ফেলুন">
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+              ${grants.length === 0 ? `
+                <tr id="emptyWelfareRow">
+                  <td colspan="9" style="text-align: center; color: #777; padding: 30px;">
+                    এখনও কোনো এককালীন ত্রাণ বা সহায়তার রেকর্ড যুক্ত করা হয়নি।<br>
+                    <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="App.openModal('welfare_grant')">
+                      ➕ প্রথম ত্রাণ বা সহায়তা এন্ট্রি করুন
+                    </button>
+                  </td>
+                </tr>
+              ` : ''}
             </tbody>
           </table>
         </div>
@@ -776,67 +969,343 @@ const AdminViews = {
     `;
   },
 
-  // 14. Advisory Board & Committee Members Management (Admin / Super Admin Control)
+  // 14. Executive Committee (পরিচালনা পরিষদ ২১+ সদস্য বিশিষ্ট কমিটি) Management (Super Admin Exclusive)
   renderCommittee(committee = []) {
-    const isAdmin = App.state.user && (App.state.user.role === 'superadmin' || App.state.user.role === 'admin' || App.state.user.username === 'admin' || App.state.user.username === 'Shahalam69');
+    const isSuperAdmin = App.state.user && (
+      App.state.user.role === 'superadmin' ||
+      App.state.user.username === 'Shahalam69' ||
+      App.state.user.username === 'admin' ||
+      String(App.state.user.id) === 'USR-001' ||
+      String(App.state.user.id) === '1'
+    );
+
+    const execMembers = committee.filter(m => (m.committee_type || 'পরিচালনা পরিষদ') === 'পরিচালনা পরিষদ');
+    const nextExecOrder = execMembers.length + 1;
+    const targetCount = 21;
+    const progressPercent = Math.min(100, Math.round((execMembers.length / targetCount) * 100));
+
     return `
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">👥 সম্মানিত উপদেষ্টা মণ্ডলী ও পরিচালনা পরিষদ ব্যবস্থাপনা</div>
-          ${isAdmin ? `
-            <button class="btn btn-primary btn-sm" onclick="App.openModal('committee_member')">➕ নতুন উপদেষ্টা / সদস্য যোগ করুন</button>
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+              <span>🏛️</span> পরিচালনা পরিষদ (২১+ সদস্য বিশিষ্ট কমিটি) ব্যবস্থাপনা
+            </div>
+            <div style="font-size: 0.86rem; color: #52665D; margin-top: 4px;">
+              ফাউন্ডেশনের ২১+ সদস্যের নির্বাহী কমিটির সচিত্র তালিকা, পদবী, পেশা, যোগাযোগ ও কার্যনির্বাহী তথ্যভাণ্ডার
+            </div>
+          </div>
+          ${isSuperAdmin ? `
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-primary btn-sm" onclick="App.openModal('committee_member', { committee_type: 'পরিচালনা পরিষদ', display_order: ${nextExecOrder} })" style="display: inline-flex; align-items: center; gap: 6px;">
+                ➕ নতুন পরিচালনা পরিষদ সদস্য যোগ করুন (২১+)
+              </button>
+            </div>
           ` : `
-            <span style="font-size:0.85rem; color:#777;">উপদেষ্টা ও সদস্য পরিবর্তনের ক্ষমতা কেবল এডমিন / সুপার এডমিনের</span>
+            <div style="background: #fff3cd; color: #856404; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; border: 1px solid #ffeeba;">
+              🔒 কেবল সুপার এডমিন (Super Admin) পরিবর্তন ও সদস্য যোগ করতে পারবেন
+            </div>
           `}
         </div>
-        <div class="alert-card info">
-          <div>
-            <strong>উপদেষ্টা পরিষদ ও পরিচালনা পর্ষদ সংক্রান্ত নির্দেশনা:</strong><br>
-            এখানে প্রদর্শিত সম্মানিত সদস্যদের তথ্য ও ছবি সরাসরি এডমিন ড্যাশবোর্ড ও পাবলিক পোর্টালে দৃশ্যমান থাকে। সদস্যদের সংযোজন, বিয়োজন, পদবি বা ছবি পরিবর্তনের পূর্ণ ক্ষমতা এডমিনের (প্রতিষ্ঠাতা চেয়ারম্যান MD SHAH ALAM) নিয়ন্ত্রণে সংরক্ষিত।
+
+        <!-- Executive Committee Target & Stats Banner -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 18px;">
+          <div style="background: linear-gradient(135deg, rgba(7, 91, 59, 0.08), rgba(7, 91, 59, 0.02)); border: 1px solid rgba(7, 91, 59, 0.2); border-radius: 8px; padding: 14px;">
+            <div style="font-size: 0.8rem; color: #52665D; font-weight: 600;">👥 বর্তমান পরিচালনা পরিষদ সদস্য</div>
+            <div style="font-size: 1.55rem; font-weight: 800; color: #075B3B; margin-top: 2px;">${bnNum(execMembers.length)} জন</div>
+            <div style="font-size: 0.74rem; color: #777;">কার্যনির্বাহী বডিতে সচিত্র সক্রিয়</div>
+          </div>
+          <div style="background: linear-gradient(135deg, rgba(200, 149, 44, 0.12), rgba(200, 149, 44, 0.03)); border: 1px solid rgba(200, 149, 44, 0.3); border-radius: 8px; padding: 14px;">
+            <div style="font-size: 0.8rem; color: #8c6e14; font-weight: 600;">🎯 ২১+ সদস্য লক্ষ্যমাত্রা ট্র্যাকার</div>
+            <div style="font-size: 1.35rem; font-weight: 800; color: #8c6e14; margin-top: 2px;">
+              ২১ জনের মধ্যে ${bnNum(execMembers.length)} জন (${bnNum(progressPercent)}%)
+            </div>
+            <div style="background: #e2d3ab; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 6px;">
+              <div style="background: #c8952c; width: ${progressPercent}%; height: 100%;"></div>
+            </div>
+          </div>
+          <div style="background: linear-gradient(135deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0.02)); border: 1px solid rgba(13, 110, 253, 0.2); border-radius: 8px; padding: 14px;">
+            <div style="font-size: 0.8rem; color: #0d6efd; font-weight: 600;">🛡️ প্রশাসনিক নিয়ন্ত্রণ</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #0a58ca; margin-top: 3px;">সুপার এডমিন সংরক্ষিত</div>
+            <div style="font-size: 0.74rem; color: #555;">Shahalam69 (MD SHAH ALAM)</div>
           </div>
         </div>
+
+        <!-- Realtime Search Bar -->
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+          <div style="font-weight: 700; color: #075B3B; font-size: 0.95rem;">
+            📋 পরিচালনা পরিষদ সদস্য তালিকা (ক্রম অনুসারে সাজানো):
+          </div>
+          <div style="flex: 1; max-width: 320px; min-width: 200px;">
+            <input type="text" id="execSearchInput" class="form-control" placeholder="🔍 নাম, পদবী, পেশা বা মোবাইল নম্বর..." onkeyup="App.searchExecutiveCommitteeTable(this.value)">
+          </div>
+        </div>
+
+        <!-- Table Display -->
         <div class="table-responsive">
-          <table class="data-table">
+          <table class="data-table" id="execCommitteeAdminTable">
             <thead>
               <tr>
-                <th style="width: 60px;">ক্রম</th>
-                <th style="width: 70px;">ছবি</th>
-                <th>নাম (বাংলা ও ইংরেজি)</th>
-                <th>পদবি</th>
-                <th>মোবাইল নম্বর</th>
-                <th>ইমেইল</th>
-                <th>অবস্থা</th>
-                ${isAdmin ? `<th style="width: 170px;">অ্যাকশন</th>` : ''}
+                <th style="width: 55px; text-align: center;">ক্রম</th>
+                <th style="width: 65px; text-align: center;">ছবি</th>
+                <th>সদস্যের নাম</th>
+                <th>কমিটির পদবী</th>
+                <th>ব্যক্তিগত পেশা</th>
+                <th>যোগাযোগ (কল ও WhatsApp)</th>
+                <th>ঠিকানা</th>
+                <th>স্ট্যাটাস</th>
+                <th style="width: 170px; text-align: center;">অ্যাকশন</th>
               </tr>
             </thead>
             <tbody>
-              ${committee.map(m => `
-                <tr>
-                  <td style="font-weight:700; text-align:center;">${bnNum(m.display_order || 1)}</td>
-                  <td>
-                    <div style="width: 46px; height: 46px; border-radius: 50%; overflow: hidden; border: 2px solid var(--accent-gold); display: flex; align-items: center; justify-content: center; background: #e8f5ec; margin: 0 auto;">
-                      ${m.photo_url ? `<img src="${m.photo_url}" alt="${m.name_bn}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:22px;">👤</span>`}
-                    </div>
-                  </td>
-                  <td>
-                    <strong style="color: #075B3B;">${m.name_bn}</strong>
-                    ${m.name_en ? `<br><small style="color:#777;">${m.name_en}</small>` : ''}
-                  </td>
-                  <td><span class="status-badge active" style="font-weight:600;">${m.designation_bn}</span></td>
-                  <td>${m.mobile || 'N/A'}</td>
-                  <td>${m.email || 'N/A'}</td>
-                  <td><span class="status-badge ${m.is_active ? 'verified' : 'rejected'}">${m.is_active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}</span></td>
-                  ${isAdmin ? `
-                    <td>
-                      <div style="display:flex; gap:6px;">
-                        <button class="btn btn-sm btn-outline-green" onclick="App.editCommitteeMember(${m.id})">✏️ সম্পাদনা</button>
-                        <button class="btn btn-sm btn-danger" onclick="App.deleteCommitteeMember(${m.id})">🗑️ অপসারণ</button>
+              ${execMembers.map((m, idx) => {
+                const orderBn = bnNum(m.display_order || (idx + 1));
+                const cleanWa = (m.whatsapp || m.mobile || '').replace(/[^0-9]/g, '');
+                const cleanPhone = (m.mobile || '').replace(/[^0-9]/g, '');
+                const escapedName = (m.name_bn || '').replace(/'/g, "\\'");
+                const escapedDesig = (m.designation_bn || '').replace(/'/g, "\\'");
+
+                return `
+                  <tr class="exec-committee-row" data-search="${(m.name_bn + ' ' + (m.name_en || '') + ' ' + m.designation_bn + ' ' + (m.profession || '') + ' ' + (m.mobile || '') + ' ' + (m.address || '')).toLowerCase()}">
+                    <td style="font-weight: 700; text-align: center; color: #555;">#${orderBn}</td>
+                    <td style="text-align: center;">
+                      <div style="width: 46px; height: 46px; border-radius: 50%; overflow: hidden; border: 2.5px solid var(--accent-gold); display: flex; align-items: center; justify-content: center; background: #e8f5ec; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        ${m.photo_url ? `<img src="${m.photo_url}" alt="${m.name_bn}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<span style=\\'font-size:20px;\\'>👤</span>';">` : `<span style="font-size: 20px;">👤</span>`}
                       </div>
                     </td>
-                  ` : ''}
+                    <td>
+                      <strong style="color: #075B3B; font-size: 0.96rem;">${m.name_bn}</strong>
+                      ${m.name_en ? `<br><small style="color: #666; font-size: 0.8rem;">${m.name_en}</small>` : ''}
+                    </td>
+                    <td>
+                      <span class="status-badge" style="background: rgba(7, 91, 59, 0.1); color: #075B3B; font-weight: 700;">
+                        ${m.designation_bn}
+                      </span>
+                    </td>
+                    <td>
+                      ${m.profession ? `
+                        <span style="display: inline-block; background: #fff8e1; color: #855300; border: 1px solid #ffe082; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
+                          👔 ${m.profession}
+                        </span>
+                      ` : '<span style="color: #aaa; font-size: 0.8rem;">দেয়া হয়নি</span>'}
+                    </td>
+                    <td>
+                      <div style="display: flex; flex-direction: column; gap: 4px;">
+                        ${m.mobile ? `
+                          <a href="tel:${cleanPhone}" style="color: #075B3B; text-decoration: none; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;">
+                            📞 ${m.mobile}
+                          </a>
+                        ` : ''}
+                        ${cleanWa ? `
+                          <a href="https://wa.me/88${cleanWa}" target="_blank" style="color: #128C7E; text-decoration: none; font-weight: 600; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px;">
+                            💬 WhatsApp
+                          </a>
+                        ` : ''}
+                      </div>
+                    </td>
+                    <td style="font-size: 0.85rem; color: #444;">
+                      ${m.address ? `📍 ${m.address}` : '<span style="color: #aaa;">N/A</span>'}
+                    </td>
+                    <td>
+                      <span class="status-badge ${m.is_active ? 'verified' : 'rejected'}" style="font-size: 0.75rem;">
+                        ${m.is_active ? '✓ সক্রিয়' : 'নিষ্ক্রিয়'}
+                      </span>
+                    </td>
+                    <td style="text-align: center;">
+                      ${isSuperAdmin ? `
+                        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                          <button type="button" class="btn btn-sm btn-outline-green" onclick="App.editCommitteeMember(${m.id})" title="তথ্য ও ছবি সম্পাদন করুন" style="padding: 4px 8px; font-size: 0.8rem;">
+                            ✏️ সম্পাদন
+                          </button>
+                          <button type="button" class="btn btn-sm btn-danger" onclick="App.deleteCommitteeMember(${m.id}, '${escapedName}', '${escapedDesig}')" title="স্থায়ীভাবে মুছে ফেলুন" style="padding: 4px 8px; font-size: 0.8rem; background: #dc3545; color: white; border: none;">
+                            🗑️ মুছুন
+                          </button>
+                        </div>
+                      ` : `
+                        <span style="font-size: 0.78rem; color: #888;">🔒 কেবল সুপার এডমিন</span>
+                      `}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+              ${execMembers.length === 0 ? `
+                <tr>
+                  <td colspan="9" style="text-align: center; padding: 30px; color: #777;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🏛️</div>
+                    <strong>এখনো কোনো পরিচালনা পরিষদ সদস্য যোগ করা হয়নি।</strong><br>
+                    উপরে "নতুন পরিচালনা পরিষদ সদস্য যোগ করুন (২১+)" বাটনে ক্লিক করে সদস্য যোগ করুন।
+                  </td>
                 </tr>
-              `).join('')}
-              ${committee.length === 0 ? `<tr><td colspan="8" style="text-align: center; color: #777;">কোনো কমিটি সদস্যের তথ্য নেই।</td></tr>` : ''}
+              ` : ''}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  // 15. Advisory Board (সম্মানিত উপদেষ্টা পরিষদ ও শরীয়াহ মণ্ডলী) Management (Super Admin Exclusive)
+  renderAdvisors(committee = []) {
+    const isSuperAdmin = App.state.user && (
+      App.state.user.role === 'superadmin' ||
+      App.state.user.username === 'Shahalam69' ||
+      App.state.user.username === 'admin' ||
+      String(App.state.user.id) === 'USR-001' ||
+      String(App.state.user.id) === '1'
+    );
+
+    const advisoryMembers = committee.filter(m => m.committee_type === 'উপদেষ্টা পরিষদ');
+    const nextAdvOrder = advisoryMembers.length + 1;
+
+    return `
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+              <span>🎖️</span> সম্মানিত উপদেষ্টা পরিষদ ও শরীয়াহ মণ্ডলী ব্যবস্থাপনা
+            </div>
+            <div style="font-size: 0.86rem; color: #52665D; margin-top: 4px;">
+              ফাউন্ডেশনের সম্মানিত নীতি ও শরীয়াহ উপদেষ্টাবৃন্দের সচিত্র তালিকা, দিকনির্দেশনা ও তথ্যভাণ্ডার
+            </div>
+          </div>
+          ${isSuperAdmin ? `
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-gold btn-sm" onclick="App.openModal('committee_member', { committee_type: 'উপদেষ্টা পরিষদ', display_order: ${nextAdvOrder} })" style="display: inline-flex; align-items: center; gap: 6px;">
+                ➕ নতুন উপদেষ্টা যোগ করুন
+              </button>
+            </div>
+          ` : `
+            <div style="background: #fff3cd; color: #856404; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; border: 1px solid #ffeeba;">
+              🔒 কেবল সুপার এডমিন (Super Admin) পরিবর্তন ও উপদেষ্টা যোগ করতে পারবেন
+            </div>
+          `}
+        </div>
+
+        <!-- Advisory Board Stats Banner -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 18px;">
+          <div style="background: linear-gradient(135deg, rgba(200, 149, 44, 0.12), rgba(200, 149, 44, 0.03)); border: 1px solid rgba(200, 149, 44, 0.3); border-radius: 8px; padding: 14px;">
+            <div style="font-size: 0.8rem; color: #8c6e14; font-weight: 600;">🎖️ মোট সম্মানিত উপদেষ্টা</div>
+            <div style="font-size: 1.55rem; font-weight: 800; color: #8c6e14; margin-top: 2px;">${bnNum(advisoryMembers.length)} জন</div>
+            <div style="font-size: 0.74rem; color: #8c6e14;">উপদেষ্টা পর্ষদে সচিত্র সক্রিয়</div>
+          </div>
+          <div style="background: linear-gradient(135deg, rgba(7, 91, 59, 0.08), rgba(7, 91, 59, 0.02)); border: 1px solid rgba(7, 91, 59, 0.2); border-radius: 8px; padding: 14px;">
+            <div style="font-size: 0.8rem; color: #52665D; font-weight: 600;">⚖️ দিকনির্দেশনা ও শরীয়াহ তদারকি</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #075B3B; margin-top: 3px;">সুদমুক্ত কর্জে হাসানা নীতি</div>
+            <div style="font-size: 0.74rem; color: #777;">নীতি ও আইনি দিকনির্দেশনা প্রদানকারী</div>
+          </div>
+          <div style="background: linear-gradient(135deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0.02)); border: 1px solid rgba(13, 110, 253, 0.2); border-radius: 8px; padding: 14px;">
+            <div style="font-size: 0.8rem; color: #0d6efd; font-weight: 600;">🛡️ প্রশাসনিক নিয়ন্ত্রণ</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #0a58ca; margin-top: 3px;">সুপার এডমিন সংরক্ষিত</div>
+            <div style="font-size: 0.74rem; color: #555;">Shahalam69 (MD SHAH ALAM)</div>
+          </div>
+        </div>
+
+        <!-- Realtime Search Bar -->
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+          <div style="font-weight: 700; color: #8c6e14; font-size: 0.95rem;">
+            📜 সম্মানিত উপদেষ্টা মণ্ডলীর তালিকা:
+          </div>
+          <div style="flex: 1; max-width: 320px; min-width: 200px;">
+            <input type="text" id="advSearchInput" class="form-control" placeholder="🔍 নাম, পদবী, পেশা বা মোবাইল নম্বর..." onkeyup="App.searchAdvisorsTable(this.value)">
+          </div>
+        </div>
+
+        <!-- Table Display -->
+        <div class="table-responsive">
+          <table class="data-table" id="advisorsAdminTable">
+            <thead>
+              <tr>
+                <th style="width: 55px; text-align: center;">ক্রম</th>
+                <th style="width: 65px; text-align: center;">ছবি</th>
+                <th>উপদেষ্টার নাম</th>
+                <th>উপদেষ্টা পদবী</th>
+                <th>ব্যক্তিগত পেশা</th>
+                <th>যোগাযোগ (কল ও WhatsApp)</th>
+                <th>ঠিকানা</th>
+                <th>স্ট্যাটাস</th>
+                <th style="width: 170px; text-align: center;">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${advisoryMembers.map((m, idx) => {
+                const orderBn = bnNum(m.display_order || (idx + 1));
+                const cleanWa = (m.whatsapp || m.mobile || '').replace(/[^0-9]/g, '');
+                const cleanPhone = (m.mobile || '').replace(/[^0-9]/g, '');
+                const escapedName = (m.name_bn || '').replace(/'/g, "\\'");
+                const escapedDesig = (m.designation_bn || '').replace(/'/g, "\\'");
+
+                return `
+                  <tr class="adv-row" data-search="${(m.name_bn + ' ' + (m.name_en || '') + ' ' + m.designation_bn + ' ' + (m.profession || '') + ' ' + (m.mobile || '') + ' ' + (m.address || '')).toLowerCase()}">
+                    <td style="font-weight: 700; text-align: center; color: #555;">#${orderBn}</td>
+                    <td style="text-align: center;">
+                      <div style="width: 46px; height: 46px; border-radius: 50%; overflow: hidden; border: 2.5px solid var(--accent-gold); display: flex; align-items: center; justify-content: center; background: #fff8e1; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        ${m.photo_url ? `<img src="${m.photo_url}" alt="${m.name_bn}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<span style=\\'font-size:20px;\\'>👤</span>';">` : `<span style="font-size: 20px;">👤</span>`}
+                      </div>
+                    </td>
+                    <td>
+                      <strong style="color: #8c6e14; font-size: 0.96rem;">${m.name_bn}</strong>
+                      ${m.name_en ? `<br><small style="color: #666; font-size: 0.8rem;">${m.name_en}</small>` : ''}
+                    </td>
+                    <td>
+                      <span class="status-badge" style="background: rgba(200, 149, 44, 0.12); color: #8c6e14; font-weight: 700;">
+                        ${m.designation_bn}
+                      </span>
+                    </td>
+                    <td>
+                      ${m.profession ? `
+                        <span style="display: inline-block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
+                          👔 ${m.profession}
+                        </span>
+                      ` : '<span style="color: #aaa; font-size: 0.8rem;">দেয়া হয়নি</span>'}
+                    </td>
+                    <td>
+                      <div style="display: flex; flex-direction: column; gap: 4px;">
+                        ${m.mobile ? `
+                          <a href="tel:${cleanPhone}" style="color: #075B3B; text-decoration: none; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;">
+                            📞 ${m.mobile}
+                          </a>
+                        ` : ''}
+                        ${cleanWa ? `
+                          <a href="https://wa.me/88${cleanWa}" target="_blank" style="color: #128C7E; text-decoration: none; font-weight: 600; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px;">
+                            💬 WhatsApp
+                          </a>
+                        ` : ''}
+                      </div>
+                    </td>
+                    <td style="font-size: 0.85rem; color: #444;">
+                      ${m.address ? `📍 ${m.address}` : '<span style="color: #aaa;">N/A</span>'}
+                    </td>
+                    <td>
+                      <span class="status-badge ${m.is_active ? 'verified' : 'rejected'}" style="font-size: 0.75rem;">
+                        ${m.is_active ? '✓ সক্রিয়' : 'নিষ্ক্রিয়'}
+                      </span>
+                    </td>
+                    <td style="text-align: center;">
+                      ${isSuperAdmin ? `
+                        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                          <button type="button" class="btn btn-sm btn-outline-green" onclick="App.editCommitteeMember(${m.id})" title="তথ্য ও ছবি সম্পাদন করুন" style="padding: 4px 8px; font-size: 0.8rem;">
+                            ✏️ সম্পাদন
+                          </button>
+                          <button type="button" class="btn btn-sm btn-danger" onclick="App.deleteCommitteeMember(${m.id}, '${escapedName}', '${escapedDesig}')" title="স্থায়ীভাবে মুছে ফেলুন" style="padding: 4px 8px; font-size: 0.8rem; background: #dc3545; color: white; border: none;">
+                            🗑️ মুছুন
+                          </button>
+                        </div>
+                      ` : `
+                        <span style="font-size: 0.78rem; color: #888;">🔒 কেবল সুপার এডমিন</span>
+                      `}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+              ${advisoryMembers.length === 0 ? `
+                <tr>
+                  <td colspan="9" style="text-align: center; padding: 30px; color: #777;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🎖️</div>
+                    <strong>এখনো কোনো উপদেষ্টা যোগ করা হয়নি।</strong><br>
+                    উপরে "নতুন উপদেষ্টা যোগ করুন" বাটনে ক্লিক করে উপদেষ্টা যোগ করুন।
+                  </td>
+                </tr>
+              ` : ''}
             </tbody>
           </table>
         </div>
@@ -844,3 +1313,4 @@ const AdminViews = {
     `;
   }
 };
+

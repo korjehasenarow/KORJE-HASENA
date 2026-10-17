@@ -649,6 +649,37 @@ body {
   border-color: var(--primary-deep-green);
 }
 
+.stat-card.clickable {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+.stat-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(7, 91, 59, 0.16);
+  border-color: var(--accent-gold);
+}
+.stat-card.clickable:active {
+  transform: translateY(-1px);
+}
+
+.stat-click-hint {
+  font-size: 0.73rem;
+  color: var(--primary-deep-green);
+  font-weight: 600;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.82;
+  transition: opacity 0.2s ease;
+}
+.stat-card.clickable:hover .stat-click-hint {
+  opacity: 1;
+  color: #8c6e14;
+  text-decoration: underline;
+}
+
 .stat-icon {
   width: 52px;
   height: 52px;

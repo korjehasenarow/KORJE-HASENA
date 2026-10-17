@@ -17,6 +17,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: null,
     mobile: '01966442769',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_1_shah_alam.jpg'
   },
   2: {
@@ -35,6 +36,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: null,
     mobile: '01914638313',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_2_moksed_ali.jpg'
   },
   3: {
@@ -53,6 +55,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: null,
     mobile: '01931649576',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_3_babul_hossain.jpg'
   },
   4: {
@@ -71,6 +74,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: 'বিশেষ নীতি: কর্জে হাসানার মূলনীতি হলো ঋণগ্রহীতাকে মূল ঋণ ফেরত দেওয়ার সুযোগ দেওয়া, ঋণের কারণে সুদ গ্রহণ না করা এবং প্রকৃত অসচ্ছল ব্যক্তির প্রতি সহানুভূতিশীল থাকা। শরিয়াহবিষয়ক গুরুত্বপূর্ণ সিদ্ধান্ত যোগ্য আলেমদের পর্যালোচনা ও ফাউন্ডেশনের অনুমোদিত নীতিমালা অনুযায়ী নেওয়া উচিত।',
     mobile: '01911086469',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_4_anwarul_islam.jpg'
   },
   5: {
@@ -89,6 +93,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: null,
     mobile: '01915604026',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_5_mahbub_alam.jpg'
   },
   6: {
@@ -107,6 +112,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: null,
     mobile: '01921970377',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_6_riazul_islam.jpg'
   },
   7: {
@@ -125,6 +131,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: 'গুরুত্বপূর্ণ নীতি: আবেদনকারীর ব্যক্তিগত পরিচয়, ধর্মীয় পরিচয়, রাজনৈতিক পরিচয় বা সামাজিক সম্পর্কের ভিত্তিতে বৈষম্য করা যাবে না। যাচাই হবে নির্ধারিত ও সবার জন্য সমান মানদণ্ডে।',
     mobile: '01716882049',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_7_saidul_islam.jpg'
   },
   8: {
@@ -143,6 +150,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: null,
     mobile: '01920114330',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_8_maidul_islam.jpg'
   },
   9: {
@@ -163,6 +171,7 @@ const COMMITTEE_ROLES_DATA = {
     ],
     special_policy: null,
     mobile: '01832630299',
+    committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_9_al_amin_onik.jpg'
   }
 };
@@ -263,6 +272,20 @@ const Components = {
               <div class="stat-value">৳ ${bnNum(summary?.loansRepaid || 0)}</div>
             </div>
           </div>
+          <div class="stat-card" style="border-top: 3px solid #C62828;">
+            <div class="stat-icon" style="background: #FFEBEE; color: #C62828;">🌾</div>
+            <div class="stat-info">
+              <h4>এককালীন ত্রাণ ও সহায়তা</h4>
+              <div class="stat-value" style="color: #C62828;">৳ ${bnNum(summary?.totalWelfareAid || 0)}</div>
+            </div>
+          </div>
+          <div class="stat-card" style="border-top: 3px solid #075B3B;">
+            <div class="stat-icon green">👨‍👩‍👧‍👦</div>
+            <div class="stat-info">
+              <h4>উপকৃত পরিবার ও ব্যক্তি</h4>
+              <div class="stat-value" style="color: #075B3B;">${bnNum(summary?.welfareBeneficiariesCount || 0)} জন/পরিবার</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -331,44 +354,76 @@ const Components = {
         </div>
       </div>
 
-      <!-- Public Committee & Advisory Board Showcase -->
-      <div id="committeeShowcaseSection" class="card" style="margin-top: 24px;">
+      <!-- 1. DEDICATED SECTION: সম্মানিত উপদেষ্টা পরিষদ (Advisory Board) -->
+      <div id="advisoryBoardSection" class="card" style="margin-top: 24px; border-top: 4px solid var(--accent-gold);">
         <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 6px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 8px;">
-            <div class="card-title" style="margin: 0;">👥 সম্মানিত উপদেষ্টা মণ্ডলী ও পরিচালনা পরিষদ</div>
-            <span class="badge" style="background: rgba(7, 91, 59, 0.1); color: var(--primary-deep-green); font-size: 0.8rem; padding: 4px 10px; font-weight: 600;">
-              ✨ ৯ সদস্য বিশিষ্ট পরিষদ
-            </span>
-          </div>
-          <p style="margin: 0; font-size: 0.88rem; color: #52665D;">কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম এর দিকনির্দেশনা ও পরিচালনায় নিয়োজিত ব্যক্তিবর্গ</p>
-          <div style="font-size: 0.82rem; color: #8c6e14; background: #FFF9E6; border: 1px solid #FFE082; padding: 6px 12px; border-radius: 6px; width: 100%; display: flex; align-items: center; gap: 6px;">
-            <span>💡</span> <strong>পরামর্শ:</strong> যেকোনো সদস্যের কার্ড বা বাটনে ক্লিক করে তাঁর প্রস্তাবিত দায়িত্ব ও পূর্ণাঙ্গ কার্যবিবরণী দেখুন।
-          </div>
+          ${(() => {
+            const list = (App.state.committee && App.state.committee.length) ? App.state.committee : Object.values(window.COMMITTEE_ROLES_DATA || {});
+            const toBn = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+            const advMembers = list.filter(m => m.committee_type === 'উপদেষ্টা পরিষদ');
+
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 8px;">
+                <div class="card-title" style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.35rem; color: #8c6e14;">
+                  <span>🎖️</span> সম্মানিত উপদেষ্টা পরিষদ ও শরীয়াহ মণ্ডলী
+                </div>
+                <span class="badge" style="background: rgba(200, 149, 44, 0.15); color: #8c6e14; font-size: 0.85rem; padding: 5px 12px; font-weight: 700; border-radius: 12px;">
+                  ✨ ${toBn(advMembers.length)} সদস্য বিশিষ্ট উপদেষ্টা পরিষদ
+                </span>
+              </div>
+              <p style="margin: 0; font-size: 0.9rem; color: #52665D;">
+                কর্জে হাসানা ফাউন্ডেশনের শরীয়াহ দিকনির্দেশনা, সামাজিক নেতৃত্ব ও প্রাতিষ্ঠানিক দিকনির্দেশনায় নিয়োজিত সম্মানিত বিশিষ্ট ব্যক্তিবর্গ
+              </p>
+            `;
+          })()}
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 14px;">
           ${(() => {
             const list = (App.state.committee && App.state.committee.length) ? App.state.committee : Object.values(window.COMMITTEE_ROLES_DATA || {});
             const toBn = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
-            return list.map((m, idx) => {
+            const advMembers = list.filter(m => m.committee_type === 'উপদেষ্টা পরিষদ');
+
+            return advMembers.map((m, idx) => {
               const role = (window.COMMITTEE_ROLES_DATA && (window.COMMITTEE_ROLES_DATA[m.id] || window.COMMITTEE_ROLES_DATA[m.display_order])) || m;
               const photoUrl = m.photo_url || role.photo_url;
               const nameBn = m.name_bn || role.name_bn;
+              const nameEn = m.name_en || role.name_en || '';
               const desigBn = m.designation_bn || role.designation_bn;
+              const profession = m.profession || role.profession || '';
+              const address = m.address || role.address || '';
               const mobile = m.mobile || role.mobile;
+              const whatsapp = m.whatsapp || role.whatsapp || mobile;
+              const cleanWa = whatsapp ? whatsapp.replace(/[^0-9]/g, '') : '';
               const proposedRole = role.proposed_role || m.bio_bn || '';
               const memberId = m.id || role.id || (idx + 1);
-              const orderBn = toBn(m.display_order || role.id || (idx + 1));
+              const orderBn = toBn(m.display_order || (idx + 1));
+
               return `
-                <div class="committee-card" onclick="App.openMemberDetailsModal(${memberId})" title="ক্লিক করে ${nameBn}-এর বিস্তারিত দায়িত্ব ও কার্যবিবরণী দেখুন">
-                  <div class="committee-card-badge">উপদেষ্টা #${orderBn}</div>
+                <div class="committee-card" onclick="App.openMemberDetailsModal(${memberId})" title="ক্লিক করে ${nameBn}-এর বিস্তারিত তথ্য দেখুন">
+                  <div class="committee-card-badge" style="background: rgba(200, 149, 44, 0.15); color: #8c6e14; font-weight: 700;">
+                    উপদেষ্টা #${orderBn}
+                  </div>
                   <div>
                     <div class="committee-avatar-wrap">
                       ${photoUrl ? `<img src="${photoUrl}" alt="${nameBn}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='/assets/logo.png';">` : `<span style="font-size: 38px;">👤</span>`}
                     </div>
                     <h4 class="committee-member-name">${nameBn}</h4>
+                    ${nameEn ? `<div style="font-size: 0.8rem; color: #777; margin-top: -4px; margin-bottom: 6px;">${nameEn}</div>` : ''}
                     <div class="committee-member-desig">
                       ${desigBn}
                     </div>
+                    ${profession ? `
+                      <div style="margin-bottom: 8px;">
+                        <span style="display: inline-block; background: #fff8e1; color: #855300; border: 1px solid #ffe082; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600;">
+                          👔 ${profession}
+                        </span>
+                      </div>
+                    ` : ''}
+                    ${address ? `
+                      <div style="font-size: 0.8rem; color: #555; margin-bottom: 8px;">
+                        📍 ${address}
+                      </div>
+                    ` : ''}
                     ${proposedRole ? `
                       <div class="committee-role-preview">
                         <strong style="color: #8c6e14;">🎯 দায়িত্ব:</strong> ${proposedRole}
@@ -376,17 +431,300 @@ const Components = {
                     ` : ''}
                   </div>
                   <div>
-                    <button type="button" class="btn btn-sm btn-gold committee-action-btn" onclick="event.stopPropagation(); App.openMemberDetailsModal(${memberId})">
-                      📋 কার্যবিবরণী ও দায়িত্ব ➔
-                    </button>
-                    ${mobile ? `
-                      <div style="font-size: 0.84rem; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                        <a href="tel:${mobile}" onclick="event.stopPropagation()" style="color: #075B3B; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                          📞 ${mobile}
+                    <div style="display: flex; gap: 6px; margin-top: 8px;">
+                      ${mobile ? `
+                        <a href="tel:${mobile}" onclick="event.stopPropagation()" class="btn btn-sm btn-outline-green" style="flex: 1; text-align: center; text-decoration: none; padding: 5px 6px; font-size: 0.82rem; font-weight: 600;" title="কল করুন">
+                          📞 কল
                         </a>
-                        <span style="font-size: 0.74rem; color: #718096; font-weight: 600;">বিস্তারিত 🔍</span>
+                      ` : ''}
+                      ${cleanWa ? `
+                        <a href="https://wa.me/88${cleanWa}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-gold" style="flex: 1; text-align: center; text-decoration: none; padding: 5px 6px; font-size: 0.82rem; font-weight: 600;" title="হোয়াটসঅ্যাপে চ্যাট">
+                          💬 WhatsApp
+                        </a>
+                      ` : ''}
+                    </div>
+                    <button type="button" class="btn btn-sm committee-action-btn" style="background: rgba(200, 149, 44, 0.1); color: #8c6e14; border: 1px solid rgba(200, 149, 44, 0.3); margin-top: 8px;" onclick="event.stopPropagation(); App.openMemberDetailsModal(${memberId})">
+                      📋 বিস্তারিত তথ্য ও দায়িত্ব ➔
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          })()}
+        </div>
+      </div>
+
+      <!-- 2. DEDICATED SECTION: পরিচালনা পরিষদ (Managing Committee - 21+ Members Box) -->
+      <div id="committeeExecutiveSection" class="card" style="margin-top: 28px; border-top: 4px solid var(--primary-deep-green);">
+        <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 6px;">
+          ${(() => {
+            const list = (App.state.committee && App.state.committee.length) ? App.state.committee : Object.values(window.COMMITTEE_ROLES_DATA || {});
+            const toBn = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+            const execMembers = list.filter(m => (m.committee_type || 'পরিচালনা পরিষদ') === 'পরিচালনা পরিষদ');
+
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 8px;">
+                <div class="card-title" style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.35rem; color: #075B3B;">
+                  <span>🏛️</span> সম্মানিত পরিচালনা পরিষদ (২১+ সদস্য বিশিষ্ট কমিটি)
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <span class="badge" style="background: rgba(7, 91, 59, 0.1); color: var(--primary-deep-green); font-size: 0.85rem; padding: 5px 12px; font-weight: 700; border-radius: 12px;">
+                    ✨ ${toBn(execMembers.length)} জন নির্বাহী সদস্য
+                  </span>
+                  <span class="badge" style="background: #fff8e1; color: #855300; border: 1px solid #ffe082; font-size: 0.82rem; padding: 5px 10px; font-weight: 700; border-radius: 12px;">
+                    🎯 ২১+ সদস্যের কমিটি বক্স
+                  </span>
+                </div>
+              </div>
+              <p style="margin: 0; font-size: 0.9rem; color: #52665D;">
+                কর্জে হাসানা ফাউন্ডেশনের নীতি নির্ধারণ, কার্যনির্বাহী পরিচালনা ও সার্বিক মানবকল্যাণ কার্যক্রম পরিচালনায় নিয়োজিত পরিচালনা পরিষদ
+              </p>
+            `;
+          })()}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 14px;">
+          ${(() => {
+            const list = (App.state.committee && App.state.committee.length) ? App.state.committee : Object.values(window.COMMITTEE_ROLES_DATA || {});
+            const toBn = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+            const execMembers = list.filter(m => (m.committee_type || 'পরিচালনা পরিষদ') === 'পরিচালনা পরিষদ');
+
+            if (execMembers.length === 0) {
+              const roles21 = [
+                { title: 'সভাপতি (President)', badge: 'পর্ষদ প্রধান', desc: 'নীতিমালা ও সার্বিক কার্যক্রম তত্ত্বাবধান' },
+                { title: 'সিনিয়র সহ-সভাপতি (Sr. VP)', badge: 'প্রশাসনিক নেতৃত্ব', desc: 'সভাপতির অনুপস্থিতিতে পর্ষদ পরিচালনা' },
+                { title: 'সহ-সভাপতি (Vice President)', badge: 'সমন্বয়ক', desc: 'কার্যনির্বাহী কার্যক্রম তদারকি' },
+                { title: 'সাধারণ সম্পাদক (General Secretary)', badge: 'প্রধান নির্বাহক', desc: 'দৈনন্দিন প্রশাসনিক ও মাঠপর্যায়ের সমন্বয়' },
+                { title: 'যুগ্ম সাধারণ সম্পাদক (Joint Secretary)', badge: 'সহ-নির্বাহক', desc: 'সাংগঠনিক পরিচালনায় সহায়তা' },
+                { title: 'কোষাধ্যক্ষ / অর্থ সম্পাদক (Treasurer)', badge: 'অর্থ ব্যবস্থাপনা', desc: 'তহবিল ও ভাউচার হিসাবরক্ষণ' },
+                { title: 'সাংগঠনিক সম্পাদক (Organizing Sec.)', badge: 'সংগঠন বিস্তার', desc: 'কমিটি বিস্তার ও সদস্য সমন্বয়' },
+                { title: 'দপ্তর সম্পাদক (Office Secretary)', badge: 'নথি ও রেকর্ড', desc: 'অফিস ব্যবস্থাপনা ও দলিলপত্র সংরক্ষণ' },
+                { title: 'প্রচার ও প্রকাশনা সম্পাদক (Media Sec.)', badge: 'প্রচার ও গণযোগাযোগ', desc: 'বিজ্ঞপ্তি, মিডিয়া ও প্রচারণা' },
+                { title: 'সমাজকল্যাণ সম্পাদক (Social Welfare)', badge: 'মানবকল্যাণ', desc: 'অসহায়দের আবেদন বাছাই ও ত্রাণ সহায়তা' },
+                { title: 'স্বাস্থ্য ও চিকিৎসা সহায়তা সম্পাদক', badge: 'চিকিৎসা সেল', desc: 'হাসপাতাল সমন্বয় ও রোগী সহায়তা' },
+                { title: 'শিক্ষা ও যুবকল্যাণ সম্পাদক', badge: 'শিক্ষা ও তরুণ সেল', desc: 'শিক্ষার্থী অনুদান ও যুব সমাজ সম্পৃক্তকরণ' },
+                { title: 'কার্যনির্বাহী সদস্য ১ (Executive Member 1)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' },
+                { title: 'কার্যনির্বাহী সদস্য ২ (Executive Member 2)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' },
+                { title: 'কার্যনির্বাহী সদস্য ৩ (Executive Member 3)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' },
+                { title: 'কার্যনির্বাহী সদস্য ৪ (Executive Member 4)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' },
+                { title: 'কার্যনির্বাহী সদস্য ৫ (Executive Member 5)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' },
+                { title: 'কার্যনির্বাহী সদস্য ৬ (Executive Member 6)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' },
+                { title: 'কার্যনির্বাহী সদস্য ৭ (Executive Member 7)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' },
+                { title: 'কার্যনির্বাহী সদস্য ৮ (Executive Member 8)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' },
+                { title: 'কার্যনির্বাহী সদস্য ৯+ (Executive Member 9+)', badge: 'সদস্য', desc: 'নীতি নির্ধারণী ফোরাম ও ফিল্ড ভিজিট' }
+              ];
+              return `
+                <div style="grid-column: 1 / -1; background: #fdfdfd; border: 2px dashed rgba(7, 91, 59, 0.25); border-radius: 12px; padding: 22px;">
+                  <div style="text-align: center; max-width: 720px; margin: 0 auto 18px auto;">
+                    <span style="font-size: 2.2rem;">🏛️</span>
+                    <h4 style="color: #075B3B; font-size: 1.25rem; font-weight: 700; margin: 6px 0 6px 0;">
+                      ২১+ সদস্য বিশিষ্ট পরিচালনা পরিষদ গঠন ও সদস্য অন্তর্ভুক্তি প্রক্রিয়াধীন
+                    </h4>
+                    <p style="color: #555; font-size: 0.92rem; line-height: 1.6; margin: 0;">
+                      ফাউন্ডেশনের গঠনতন্ত্র অনুসারে রৌমারীর বিশিষ্ট সমাজসেবক, শিক্ষাবিদ ও উদ্যমী তরুণদের সমন্বয়ে গঠিত হচ্ছে ২১+ সদস্যের নির্বাহী কমিটি। এডমিন প্যানেল থেকে সদস্য যুক্ত করলেই তাঁদের ছবি ও দায়িত্ব এখানে সরাসরি প্রকাশিত হবে।
+                    </p>
+                    <div style="margin-top: 14px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                      <button type="button" class="btn btn-sm btn-primary" onclick="App.navigate('admin'); App.navigateAdmin('committee');" style="display: inline-flex; align-items: center; gap: 6px;">
+                        🔐 এডমিন প্যানেল থেকে পরিচালনা পরিষদে সদস্য যোগ করুন (২১+)
+                      </button>
+                      <a href="https://wa.me/8801966442769?text=${encodeURIComponent('আসসালামু আলাইকুম, আমি কর্জে হাসানা ফাউন্ডেশনের পরিচালনা পরিষদে স্বেচ্ছাসেবী/সদস্য হিসেবে যুক্ত হতে আগ্রহী।')}" target="_blank" class="btn btn-sm btn-gold" style="display: inline-flex; align-items: center; gap: 6px;">
+                        💬 সদস্য হতে আগ্রহ প্রকাশ করুন
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- 21+ Role Blueprint Slots Preview Grid -->
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 14px;">
+                    ${roles21.map((r, i) => `
+                      <div style="background: white; border: 1px solid rgba(7, 91, 59, 0.15); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; text-align: center; transition: all 0.2s ease;">
+                        <div>
+                          <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(7, 91, 59, 0.08); border: 1.5px dashed #075b3b; margin: 0 auto 8px auto; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #075b3b;">
+                            👤
+                          </div>
+                          <span style="font-size: 0.72rem; background: #e8f5ec; color: #075b3b; font-weight: 700; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 4px;">
+                            ${toBn(i + 1)}. ${r.badge}
+                          </span>
+                          <div style="font-weight: 700; font-size: 0.88rem; color: #1e3a2b; margin-top: 2px;">
+                            ${r.title}
+                          </div>
+                          <div style="font-size: 0.75rem; color: #666; margin-top: 4px;">
+                            ${r.desc}
+                          </div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 0.72rem; color: #8c6e14; font-weight: 600; border-top: 1px dashed #eee; padding-top: 6px;">
+                          ⏳ অন্তর্ভুক্তি প্রক্রিয়াধীন...
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `;
+            }
+
+            return execMembers.map((m, idx) => {
+              const role = (window.COMMITTEE_ROLES_DATA && (window.COMMITTEE_ROLES_DATA[m.id] || window.COMMITTEE_ROLES_DATA[m.display_order])) || m;
+              const photoUrl = m.photo_url || role.photo_url;
+              const nameBn = m.name_bn || role.name_bn;
+              const nameEn = m.name_en || role.name_en || '';
+              const desigBn = m.designation_bn || role.designation_bn;
+              const profession = m.profession || role.profession || '';
+              const address = m.address || role.address || '';
+              const mobile = m.mobile || role.mobile;
+              const whatsapp = m.whatsapp || role.whatsapp || mobile;
+              const cleanWa = whatsapp ? whatsapp.replace(/[^0-9]/g, '') : '';
+              const proposedRole = role.proposed_role || m.bio_bn || '';
+              const memberId = m.id || role.id || (idx + 1);
+              const orderBn = toBn(m.display_order || (idx + 1));
+
+              return `
+                <div class="committee-card" onclick="App.openMemberDetailsModal(${memberId})" title="ক্লিক করে ${nameBn}-এর বিস্তারিত তথ্য দেখুন">
+                  <div class="committee-card-badge" style="background: rgba(7, 91, 59, 0.1); color: #075B3B; font-weight: 700;">
+                    পরিচালনা পরিষদ #${orderBn}
+                  </div>
+                  <div>
+                    <div class="committee-avatar-wrap">
+                      ${photoUrl ? `<img src="${photoUrl}" alt="${nameBn}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='/assets/logo.png';">` : `<span style="font-size: 38px;">👤</span>`}
+                    </div>
+                    <h4 class="committee-member-name">${nameBn}</h4>
+                    ${nameEn ? `<div style="font-size: 0.8rem; color: #777; margin-top: -4px; margin-bottom: 6px;">${nameEn}</div>` : ''}
+                    <div class="committee-member-desig">
+                      ${desigBn}
+                    </div>
+                    ${profession ? `
+                      <div style="margin-bottom: 8px;">
+                        <span style="display: inline-block; background: #fff8e1; color: #855300; border: 1px solid #ffe082; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600;">
+                          👔 ${profession}
+                        </span>
                       </div>
                     ` : ''}
+                    ${address ? `
+                      <div style="font-size: 0.8rem; color: #555; margin-bottom: 8px;">
+                        📍 ${address}
+                      </div>
+                    ` : ''}
+                    ${proposedRole ? `
+                      <div class="committee-role-preview">
+                        <strong style="color: #8c6e14;">🎯 দায়িত্ব:</strong> ${proposedRole}
+                      </div>
+                    ` : ''}
+                  </div>
+                  <div>
+                    <div style="display: flex; gap: 6px; margin-top: 8px;">
+                      ${mobile ? `
+                        <a href="tel:${mobile}" onclick="event.stopPropagation()" class="btn btn-sm btn-outline-green" style="flex: 1; text-align: center; text-decoration: none; padding: 5px 6px; font-size: 0.82rem; font-weight: 600;" title="কল করুন">
+                          📞 কল
+                        </a>
+                      ` : ''}
+                      ${cleanWa ? `
+                        <a href="https://wa.me/88${cleanWa}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-gold" style="flex: 1; text-align: center; text-decoration: none; padding: 5px 6px; font-size: 0.82rem; font-weight: 600;" title="হোয়াটসঅ্যাপে চ্যাট">
+                          💬 WhatsApp
+                        </a>
+                      ` : ''}
+                    </div>
+                    <button type="button" class="btn btn-sm committee-action-btn" style="background: rgba(7, 91, 59, 0.08); color: #075B3B; border: 1px solid rgba(7, 91, 59, 0.2); margin-top: 8px;" onclick="event.stopPropagation(); App.openMemberDetailsModal(${memberId})">
+                      📋 বিস্তারিত তথ্য ও দায়িত্ব ➔
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          })()}
+        </div>
+      </div>
+
+      <!-- 3. DEDICATED SECTION: সম্মানিত দাতা মণ্ডলী (Honored Donors Showcase Box) -->
+      <div id="featuredDonorsSection" class="card" style="margin-top: 28px; border-top: 4px solid var(--accent-gold);">
+        <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 6px;">
+          ${(() => {
+            const donors = (App.state.donors && App.state.donors.length) ? App.state.donors.filter(d => d.show_on_website !== 0) : [];
+            const toBn = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 8px;">
+                <div class="card-title" style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.35rem; color: #8c6e14;">
+                  <span>❤️</span> সম্মানিত দাতা মণ্ডলী (Our Respected Donors)
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <span class="badge" style="background: rgba(200, 149, 44, 0.15); color: #8c6e14; font-size: 0.85rem; padding: 5px 12px; font-weight: 700; border-radius: 12px;">
+                    ✨ ${toBn(donors.length)} জন সম্মানিত শুভানুধ্যায়ী
+                  </span>
+                  <button type="button" class="btn btn-sm btn-gold" onclick="App.navigate('donate')" style="padding: 4px 10px; font-size: 0.82rem;">
+                    ❤️ আপনিও অনুদান দিন
+                  </button>
+                </div>
+              </div>
+              <p style="margin: 0; font-size: 0.9rem; color: #52665D;">
+                সুদমুক্ত তহবিলে যে সকল দানবীর ২০০০, ৫০০০, ১০০০০, ২০০০০ বা তার অধিক টাকা অনুদান প্রদান করে রৌমারীর অসহায় মানুষের মুখে হাসি ফুটিয়েছেন
+              </p>
+            `;
+          })()}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; margin-top: 14px;">
+          ${(() => {
+            const donors = (App.state.donors && App.state.donors.length) ? App.state.donors.filter(d => d.show_on_website !== 0) : [];
+            const toBn = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+
+            if (donors.length === 0) {
+              return `
+                <div style="grid-column: 1 / -1; background: #fffcf4; border: 2px dashed #f0db99; border-radius: 12px; padding: 28px; text-align: center;">
+                  <div style="width: 56px; height: 56px; border-radius: 50%; background: #fff3cd; color: #856404; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 12px auto; border: 2px solid #ffeeba;">
+                    ❤️
+                  </div>
+                  <h4 style="color: #8c6e14; font-size: 1.2rem; font-weight: 700; margin-bottom: 6px;">
+                    সম্মানিত দাতা মণ্ডলীর তালিকা প্রক্রিয়াধীন
+                  </h4>
+                  <p style="color: #666; font-size: 0.92rem; max-width: 600px; margin: 0 auto 14px auto; line-height: 1.5;">
+                    সুদমুক্ত কর্জে হাসানা তহবিলে যে সকল দানবীর অনুদান প্রদান করছেন, এডমিন প্যানেল থেকে ছবি ও বিবরণ ইনপুট দেওয়ার সাথে সাথেই তাঁদের প্রোফাইল এখানে সসম্মানে প্রকাশিত হবে।
+                  </p>
+                  <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-gold btn-sm" onclick="App.navigate('donate')">
+                      ❤️ তহবিলে অনুদান পাঠান
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="App.openModal('donor')">
+                      ➕ এডমিন: নতুন দাতা ও ছবি যুক্ত করুন
+                    </button>
+                  </div>
+                </div>
+              `;
+            }
+
+            return donors.map((d, idx) => {
+              const photoUrl = d.photo_url;
+              const nameBn = d.name_bn;
+              const nameEn = d.name_en || '';
+              const category = d.category || 'এককালীন দাতা';
+              const address = d.address || '';
+              const totalAmount = d.totalDonated || d.commitment_amount || 0;
+
+              return `
+                <div class="committee-card" style="border-top: 3px solid var(--accent-gold); padding: 18px 16px;">
+                  <div class="committee-card-badge" style="background: rgba(200, 149, 44, 0.12); color: #8c6e14; font-weight: 700;">
+                    ${category}
+                  </div>
+                  <div>
+                    <div class="committee-avatar-wrap" style="border: 2.5px solid var(--accent-gold); box-shadow: 0 4px 10px rgba(200, 149, 44, 0.2);">
+                      ${photoUrl ? `<img src="${photoUrl}" alt="${nameBn}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='/assets/logo.png';">` : `<span style="font-size: 38px;">👤</span>`}
+                    </div>
+                    <h4 class="committee-member-name" style="color: #075B3B;">${nameBn}</h4>
+                    ${nameEn ? `<div style="font-size: 0.8rem; color: #777; margin-top: -4px; margin-bottom: 6px;">${nameEn}</div>` : ''}
+                    
+                    ${totalAmount > 0 ? `
+                      <div style="margin: 8px 0;">
+                        <span style="display: inline-block; background: #e8f5ec; color: #075b3b; border: 1px solid #b7e1c8; padding: 4px 12px; border-radius: 14px; font-size: 0.88rem; font-weight: 800;">
+                          💰 মোট অনুদান: ৳ ${toBn(totalAmount)}
+                        </span>
+                      </div>
+                    ` : ''}
+
+                    ${address ? `
+                      <div style="font-size: 0.82rem; color: #555; margin-top: 6px;">
+                        📍 ${address}
+                      </div>
+                    ` : ''}
+                  </div>
+                  <div>
+                    <button type="button" class="btn btn-sm btn-outline-green" style="width: 100%; margin-top: 10px; font-size: 0.8rem;" onclick="App.openDonationForDonor('${d.id}')">
+                      💵 এই দাতার অনুদান রেকর্ড ➔
+                    </button>
                   </div>
                 </div>
               `;
@@ -1419,43 +1757,308 @@ const Components = {
     `;
   },
 
-  renderPublicTransparency(org, summary) {
+  renderPublicTransparency(org, summary, welfareData) {
+    const wData = welfareData || {
+      totalAidSpent: summary?.totalWelfareAid || 0,
+      totalBeneficiaries: summary?.welfareBeneficiariesCount || 0,
+      totalActivities: summary?.welfareActivitiesCount || 0,
+      categoryBreakdown: [],
+      recentGrants: []
+    };
+
+    const catIcons = {
+      'গৃহহীনদের ঘর নির্মাণ': '🏠',
+      'খাদ্য ও নিত্যপণ্য বাজার সহায়তা': '🛒',
+      'জরুরি চিকিৎসা সহায়তা': '🏥',
+      'শীতবস্ত্র ও কম্বল বিতরণ': '❄️',
+      'দুর্যোগ ও বন্যা ত্রাণ': '🌊',
+      'শিক্ষা সহায়তা ও উপকরণ': '📚',
+      'অন্যান্য': '🌾'
+    };
+
+    const coreCategories = [
+      'গৃহহীনদের ঘর নির্মাণ',
+      'খাদ্য ও নিত্যপণ্য বাজার সহায়তা',
+      'জরুরি চিকিৎসা সহায়তা',
+      'শীতবস্ত্র ও কম্বল বিতরণ',
+      'দুর্যোগ ও বন্যা ত্রাণ',
+      'শিক্ষা সহায়তা ও উপকরণ'
+    ];
+
+    const breakdownMap = {};
+    (wData.categoryBreakdown || []).forEach(c => {
+      breakdownMap[c.category] = c;
+    });
+
+    // Save grants to window map for instant voucher preview
+    window._publicGrantsMap = window._publicGrantsMap || {};
+    (wData.recentGrants || []).forEach(g => {
+      window._publicGrantsMap[g.id] = g;
+    });
+
     return `
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📊 আর্থিক স্বচ্ছতা ও কার্যক্রমের প্রতিবেদন</div>
+      <!-- Top Title & Explanatory Banner -->
+      <div class="card" style="border-top: 5px solid var(--primary-deep-green); margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #E8F5EC; color: #075B3B; font-weight: 700; font-size: 0.85rem; padding: 4px 12px; border-radius: 20px; margin-bottom: 8px;">
+              <span>🛡️ শতভাগ উন্মুক্ত ও ডিজিটাল অডিট খতিয়ান</span>
+            </div>
+            <h2 style="font-size: 1.65rem; color: var(--primary-deep-green); margin: 0 0 6px 0;">
+              📊 আর্থিক স্বচ্ছতা, জবাবদিহিতা ও অডিট প্রতিবেদন
+            </h2>
+            <div style="font-size: 0.95rem; color: var(--text-muted);">
+              ${org.name_bn || 'কর্জে হাসানা ফাউন্ডেশন, রৌমারী'} • প্রতিটি পয়সার আমানত ও ব্যয়ের পূর্ণ খতিয়ান
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-outline-green btn-sm" onclick="window.print()">
+              🖨️ প্রিন্ট / PDF সংরক্ষণ
+            </button>
+            <button class="btn btn-gold btn-sm" onclick="App.navigate('donate')">
+              ❤️ তহবিলে অনুদান দিন
+            </button>
+          </div>
         </div>
-        <p style="font-size: 0.95rem; line-height: 1.7; color: var(--text-dark); margin-bottom: 20px;">
-          কর্জে হাসানা ফাউন্ডেশন তার প্রতিটি পয়সার হিসাব সম্মানিত দাতা ও সর্বসাধারণের কাছে প্রকাশে দায়বদ্ধ। নিচে সংরক্ষিত ডাটাবেজ থেকে সরাসরি সংগৃহীত মূল হিসাব তুলে ধরা হলো:
-        </p>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon green">💰</div>
-            <div class="stat-info">
-              <h4>মোট সংগৃহীত অনুদান</h4>
-              <div class="stat-value">৳ ${bnNum(summary?.donationsTotal || 0)}</div>
+
+        <div style="background: #F4F8F5; border-left: 4px solid var(--accent-gold); padding: 14px 18px; border-radius: 6px; margin-top: 18px; line-height: 1.8; font-size: 0.95rem; color: #1E3A2A;">
+          <strong>💡 আমাদের দুটি সুস্পষ্ট আর্থিক নীতিমালা ও কার্যক্রম:</strong><br>
+          ১. <strong>ঘূর্ণায়মান কর্জে হাসানা (সুদমুক্ত ধার):</strong> দাতা ও শুভানুধ্যায়ীদের প্রদত্ত অর্থ ঘূর্ণায়মান পদ্ধতিতে সুদমুক্ত ধার হিসেবে প্রদান করা হয় এবং নির্ধারিত মেয়াদে মূল টাকা ফেরত এসে পুনরায় নতুন গ্রাহকদের মাঝে বিতরণ হয়।<br>
+          ২. <strong>এককালীন মানবিক অনুদান ও ত্রাণ পুনর্বাসন:</strong> প্রাকৃতিক দুর্যোগ, নদীভাঙনে গৃহহীনদের ঘর নির্মাণ, দরিদ্র পরিবারের এক মাসের বাজার সহায়তা, জরুরি চিকিৎসা সহায়তা, শীতকালীন কম্বল/সোয়েটার বিতরণ ও শিক্ষা সহায়তা ইত্যাদি জনকল্যাণমূলক কাজে সংগৃহীত অর্থ এককালীন ব্যয় করা হয়। <em>এটি কোনো ঋণ নয়, অফেরতযোগ্য মানবিক সহায়তা—যার প্রতিটি ব্যয়ের পূর্ণ অডিট ভাউচার নিচে উন্মুক্ত।</em>
+        </div>
+      </div>
+
+      <!-- DUAL PILLARS KPI COMPARISON -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; margin-bottom: 24px;">
+        
+        <!-- Pillar 1: Revolving Karje Hasana -->
+        <div class="card" style="border: 2px solid #2196F3; border-top: 5px solid #1565C0; background: #FCFDFF;">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #E3F2FD; padding-bottom: 12px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.8rem;">🔄</span>
+              <div>
+                <h3 style="margin: 0; font-size: 1.15rem; color: #0D47A1;">শাখা ১: ঘূর্ণায়মান কর্জে হাসানা</h3>
+                <span style="font-size: 0.8rem; color: #1976D2; font-weight: 600;">(সুদমুক্ত ধার • মূলধন ১০০% ফেরতযোগ্য)</span>
+              </div>
+            </div>
+            <span class="badge" style="background: #E3F2FD; color: #0D47A1; font-weight: 700;">Revolving Fund</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="background: #F8FBFE; padding: 12px; border-radius: 8px; border: 1px solid #E1E8EE;">
+              <div style="font-size: 0.8rem; color: #546E7A;">মোট সংগৃহীত অনুদান মূলধন</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #0D47A1; margin-top: 4px;">৳ ${bnNum(summary?.donationsTotal || 0)}</div>
+            </div>
+            <div style="background: #F8FBFE; padding: 12px; border-radius: 8px; border: 1px solid #E1E8EE;">
+              <div style="font-size: 0.8rem; color: #546E7A;">বিতরণকৃত সুদমুক্ত ধার</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #1565C0; margin-top: 4px;">৳ ${bnNum(summary?.loansDisbursed || 0)}</div>
+            </div>
+            <div style="background: #F8FBFE; padding: 12px; border-radius: 8px; border: 1px solid #E1E8EE;">
+              <div style="font-size: 0.8rem; color: #546E7A;">সফলভাবে ফেরতপ্রাপ্ত মূলধন</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #2E7D32; margin-top: 4px;">৳ ${bnNum(summary?.loansRepaid || 0)}</div>
+            </div>
+            <div style="background: #F8FBFE; padding: 12px; border-radius: 8px; border: 1px solid #E1E8EE;">
+              <div style="font-size: 0.8rem; color: #546E7A;">সম্পূর্ণ সমাপ্ত ঋণ / গ্রহীতা</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #00796B; margin-top: 4px;">${bnNum(summary?.completedLoans || 0)} টি পরিবার</div>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon blue">🤝</div>
-            <div class="stat-info">
-              <h4>বিতরণকৃত সুদমুক্ত ধার</h4>
-              <div class="stat-value">৳ ${bnNum(summary?.loansDisbursed || 0)}</div>
+          <div style="margin-top: 14px; font-size: 0.85rem; color: #455A64; line-height: 1.6; background: #E3F2FD; padding: 8px 12px; border-radius: 6px;">
+            ℹ️ গ্রহীতাদের কাছ থেকে কোনো সুদ, সার্ভিস চার্জ বা অতিরিক্ত ফি নেওয়া হয় না। ফেরতপ্রাপ্ত টাকা আবার অপেক্ষমাণ আবেদনকারীদের দেওয়া হয়।
+          </div>
+        </div>
+
+        <!-- Pillar 2: One-time Welfare & Relief Grants -->
+        <div class="card" style="border: 2px solid #2E7D32; border-top: 5px solid #1B5E20; background: #FCFFFC;">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #E8F5E9; padding-bottom: 12px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.8rem;">🌾</span>
+              <div>
+                <h3 style="margin: 0; font-size: 1.15rem; color: #1B5E20;">শাখা ২: এককালীন ত্রাণ ও মানবিক সহায়তা</h3>
+                <span style="font-size: 0.8rem; color: #2E7D32; font-weight: 600;">(অফেরতযোগ্য সহায়তা • ১০০% অডিট সংবলিত)</span>
+              </div>
+            </div>
+            <span class="badge" style="background: #E8F5E9; color: #1B5E20; font-weight: 700;">Humanitarian Aid</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
+              <div style="font-size: 0.8rem; color: #33691E;">মোট এককালীন সহায়তা ব্যয়</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #1B5E20; margin-top: 4px;">৳ ${bnNum(wData.totalAidSpent || 0)}</div>
+            </div>
+            <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
+              <div style="font-size: 0.8rem; color: #33691E;">উপকৃত পরিবার ও ব্যক্তি</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #2E7D32; margin-top: 4px;">${bnNum(wData.totalBeneficiaries || 0)} জন</div>
+            </div>
+            <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
+              <div style="font-size: 0.8rem; color: #33691E;">বাস্তবায়িত কার্যক্রম/প্রজেক্ট</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #33691E; margin-top: 4px;">${bnNum(wData.totalActivities || 0)} টি</div>
+            </div>
+            <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
+              <div style="font-size: 0.8rem; color: #33691E;">ভাউচার ও অডিট নিশ্চয়তা</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #00796B; margin-top: 4px;">১০০% সম্পূর্ণ</div>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon gold">🔄</div>
-            <div class="stat-info">
-              <h4>ফেরত পাওয়া মূল টাকা</h4>
-              <div class="stat-value">৳ ${bnNum(summary?.loansRepaid || 0)}</div>
+          <div style="margin-top: 14px; font-size: 0.85rem; color: #2E7D32; line-height: 1.6; background: #E8F5E9; padding: 8px 12px; border-radius: 6px;">
+            ℹ️ ঘর নির্মাণ, খাদ্য সামগ্রী, জরুরি চিকিৎসা, শীতবস্ত্র ও বন্যা ত্রাণে এই অর্থ নিঃশর্তভাবে অসহায়দের প্রদান করা হয়েছে।
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CATEGORY BREAKDOWN CARDS -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header" style="margin-bottom: 16px;">
+          <div class="card-title">🏷️ খাতভিত্তিক এককালীন সহায়তা ও ত্রাণ ব্যয় বিবরণী</div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
+          ${coreCategories.map(cat => {
+            const data = breakdownMap[cat] || { count: 0, beneficiaries: 0, total_amount: 0 };
+            const icon = catIcons[cat] || '🌾';
+            return `
+              <div style="background: #FAFBF9; border: 1px solid #E0E6E2; border-radius: 8px; padding: 14px; border-left: 4px solid var(--primary-deep-green); transition: transform 0.2s;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                  <span style="font-size: 1.5rem;">${icon}</span>
+                  <div style="font-weight: 700; color: #1E3A2A; font-size: 0.95rem;">${cat}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
+                  <div>
+                    <div style="font-size: 0.75rem; color: #666;">মোট বিতরণকৃত সহায়তা</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: var(--primary-deep-green);">৳ ${bnNum(data.total_amount)}</div>
+                  </div>
+                  <div style="text-align: right; font-size: 0.8rem; color: #555;">
+                    <div>${bnNum(data.beneficiaries)} জন উপকৃত</div>
+                    <div style="color: #888;">${bnNum(data.count)} টি কার্যক্রম</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- DETAILED PUBLIC AUDIT TABLE OF WELFARE & RELIEF PROJECTS -->
+      <div class="card">
+        <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div class="card-title">📋 এককালীন ত্রাণ ও মানবিক সহায়তা অডিট খতিয়ান (পাবলিক লেজার)</div>
+            <span class="badge" style="background: #E8F5EC; color: #075B3B; font-weight: 700;">
+              মোট রেকর্ড: ${bnNum((wData.recentGrants || []).length)} টি
+            </span>
+          </div>
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <!-- Category Filter Chips -->
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="btn btn-sm public-welfare-filter-btn active" style="padding: 4px 10px; font-size: 0.8rem;" onclick="App.filterPublicWelfareCategory('all', this)">সবগুলো</button>
+              <button class="btn btn-sm public-welfare-filter-btn btn-outline-green" style="padding: 4px 10px; font-size: 0.8rem;" onclick="App.filterPublicWelfareCategory('গৃহহীনদের ঘর নির্মাণ', this)">🏠 ঘর নির্মাণ</button>
+              <button class="btn btn-sm public-welfare-filter-btn btn-outline-green" style="padding: 4px 10px; font-size: 0.8rem;" onclick="App.filterPublicWelfareCategory('খাদ্য ও নিত্যপণ্য বাজার সহায়তা', this)">🛒 খাদ্য সহায়তা</button>
+              <button class="btn btn-sm public-welfare-filter-btn btn-outline-green" style="padding: 4px 10px; font-size: 0.8rem;" onclick="App.filterPublicWelfareCategory('জরুরি চিকিৎসা সহায়তা', this)">🏥 চিকিৎসা</button>
+              <button class="btn btn-sm public-welfare-filter-btn btn-outline-green" style="padding: 4px 10px; font-size: 0.8rem;" onclick="App.filterPublicWelfareCategory('শীতবস্ত্র ও কম্বল বিতরণ', this)">❄️ শীতবস্ত্র</button>
+              <button class="btn btn-sm public-welfare-filter-btn btn-outline-green" style="padding: 4px 10px; font-size: 0.8rem;" onclick="App.filterPublicWelfareCategory('দুর্যোগ ও বন্যা ত্রাণ', this)">🌊 দুর্যোগ ও বন্যা</button>
+              <button class="btn btn-sm public-welfare-filter-btn btn-outline-green" style="padding: 4px 10px; font-size: 0.8rem;" onclick="App.filterPublicWelfareCategory('শিক্ষা সহায়তা ও উপকরণ', this)">📚 শিক্ষা</button>
+            </div>
+            <!-- Search Input -->
+            <div style="min-width: 250px; flex: 1; max-width: 380px;">
+              <input 
+                type="text" 
+                id="publicWelfareSearchInput" 
+                class="form-control" 
+                placeholder="🔍 প্রকল্প, এলাকা বা গ্রহীতার নাম লিখুন..." 
+                style="padding: 6px 12px; font-size: 0.85rem;"
+                oninput="App.filterPublicWelfareList(this.value)"
+              >
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon green">✅</div>
-            <div class="stat-info">
-              <h4>সম্পূর্ণ সমাপ্ত ঋণ</h4>
-              <div class="stat-value">${bnNum(summary?.completedLoans || 0)} টি</div>
-            </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="publicWelfareTable">
+            <thead>
+              <tr>
+                <th>তারিখ</th>
+                <th>ভাউচার নং</th>
+                <th>প্রকল্পের নাম ও খাত</th>
+                <th>উপকারভোগী / এলাকা</th>
+                <th style="text-align: center;">উপকৃত সংখ্যা</th>
+                <th style="text-align: right;">ব্যয়ের পরিমাণ</th>
+                <th>তহবিল উৎস</th>
+                <th style="text-align: center;">প্রমাণক/ছবি</th>
+                <th style="text-align: center;">ভাউচার</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(wData.recentGrants || []).map(g => {
+                const icon = catIcons[g.category] || '🌾';
+                return `
+                  <tr class="public-welfare-row" data-category="${g.category}">
+                    <td style="white-space: nowrap; font-size: 0.85rem; color: #555;">${g.date}</td>
+                    <td>
+                      <span style="font-family: monospace; font-weight: 700; color: #1B5E20; background: #E8F5E9; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">
+                        ${g.voucher_no}
+                      </span>
+                    </td>
+                    <td>
+                      <div style="font-weight: 600; color: #1E3A2A;">${icon} ${g.title_bn}</div>
+                      <div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${g.category}</div>
+                      ${g.description ? `<div style="font-size: 0.78rem; color: #777; margin-top: 2px; font-style: italic;">${g.description}</div>` : ''}
+                    </td>
+                    <td>
+                      <div style="font-weight: 600;">${g.beneficiary_name}</div>
+                      <div style="font-size: 0.8rem; color: #777;">${g.beneficiary_address || 'রৌমারী, কুড়িগ্রাম'}</div>
+                    </td>
+                    <td style="text-align: center; font-weight: 600; color: #075B3B;">
+                      ${bnNum(g.beneficiary_count || 1)} জন
+                    </td>
+                    <td style="text-align: right; font-weight: 700; color: #B71C1C; font-size: 1.05rem;">
+                      ৳ ${bnNum(g.amount)}
+                    </td>
+                    <td>
+                      <span class="badge" style="background: #E8F5EC; color: #075B3B; font-size: 0.75rem;">
+                        ${g.fund_name || 'সাধারণ তহবিল'}
+                      </span>
+                    </td>
+                    <td style="text-align: center;">
+                      ${g.photo_url ? `
+                        <img 
+                          src="${g.photo_url}" 
+                          alt="প্রমাণক" 
+                          style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc; cursor: pointer;"
+                          onclick="App.openImagePreview('${g.photo_url}', '${g.title_bn.replace(/'/g, "\\'")}')"
+                          title="বড় করে দেখতে ক্লিক করুন"
+                        >
+                      ` : `
+                        <span style="color: #aaa; font-size: 0.8rem;">সংযুক্ত নেই</span>
+                      `}
+                    </td>
+                    <td style="text-align: center;">
+                      <button 
+                        class="btn btn-sm btn-outline-green" 
+                        style="padding: 4px 8px; font-size: 0.8rem;" 
+                        onclick="App.viewWelfareVoucher(window._publicGrantsMap['${g.id}'])"
+                        title="অফিসিয়াল অডিট ভাউচার দেখুন ও প্রিন্ট করুন"
+                      >
+                        📄 ভাউচার
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+              ${(!wData.recentGrants || wData.recentGrants.length === 0) ? `
+                <tr>
+                  <td colspan="9" style="text-align: center; padding: 40px; color: #777;">
+                    বর্তমানে কোনো এককালীন ত্রাণ বা সহায়তা রেকর্ড পাওয়া যায়নি। নতুন এন্ট্রি হলে এখানে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।
+                  </td>
+                </tr>
+              ` : ''}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.85rem; color: #666;">
+          <div>
+            🔍 <em>প্রতিটি ভাউচার চার স্তর বিশিষ্ট অনুমোদন (চেয়ারম্যান, সাধারণ সম্পাদক, কোষাধ্যক্ষ ও নিরীক্ষক) সাপেক্ষে ডাটাবেজে চূড়ান্ত হয়।</em>
+          </div>
+          <div>
+            🏛️ <strong>অডিট সহায়তা হেল্পলাইন:</strong> ০১৯৬৬-৪৪২৭৬৯
           </div>
         </div>
       </div>
@@ -3197,123 +3800,157 @@ const Components = {
         <button class="btn btn-outline-green" onclick="App.navigateAdmin('applications')">📝 নতুন আবেদন যাচাই</button>
         <button class="btn btn-primary" onclick="App.navigateAdmin('disbursement')">🤝 নতুন ধার বিতরণ</button>
         <button class="btn btn-gold" onclick="App.openModal('repayment')">🔄 ফেরত/কিস্তি গ্রহণ</button>
+        <button class="btn btn-gold" style="background: #1b5e20; color: #fff; border-color: #1b5e20;" onclick="App.openModal('welfare_grant')">🌾 নতুন ত্রাণ ও এককালীন সহায়তা</button>
+        <button class="btn btn-outline-green" onclick="App.navigateAdmin('welfare')">📋 ত্রাণ অডিট খাতা</button>
         <button class="btn btn-danger" onclick="App.openModal('expense')">🧾 নতুন ব্যয় এন্ট্রি</button>
         <button class="btn btn-outline-green" onclick="App.navigateAdmin('reports')">📑 রিপোর্ট দেখুন</button>
         <button class="btn btn-outline-green" onclick="App.runAlertCheck()">⚡ অ্যালার্ট রিফ্রেশ</button>
       </div>
 
-      <!-- 16 Real Database-Driven Stats Cards -->
+      <!-- 16 Real Database-Driven Stats Cards (Clickable Drilldown) -->
       <div class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('cashBalance')" title="ক্লিক করে নগদ ব্যালেন্স ও ক্যাশবুকের বিস্তারিত দেখুন">
           <div class="stat-icon green">💵</div>
           <div class="stat-info">
             <h4>বর্তমান নগদ ব্যালেন্স</h4>
             <div class="stat-value">৳ ${bnNum(stats.cashBalance)}</div>
+            <div class="stat-click-hint"><span>🔍</span> বিস্তারিত দেখতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('bankBalance')" title="ক্লিক করে সকল ব্যাংক একাউন্টের ব্যালেন্স ও লেনদেন দেখুন">
           <div class="stat-icon blue">🏦</div>
           <div class="stat-info">
             <h4>ব্যাংক ব্যালেন্স</h4>
             <div class="stat-value">৳ ${bnNum(stats.bankBalance)}</div>
+            <div class="stat-click-hint"><span>🔍</span> বিস্তারিত দেখতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('bkashBalance')" title="ক্লিক করে বিকাশ/নগদ/রকেট ব্যালেন্স ও লেনদেন দেখুন">
           <div class="stat-icon gold">📱</div>
           <div class="stat-info">
             <h4>বিকাশ/মোবাইল ব্যালেন্স</h4>
             <div class="stat-value">৳ ${bnNum(stats.bkashBalance)}</div>
+            <div class="stat-click-hint"><span>🔍</span> বিস্তারিত দেখতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card" style="border: 2px solid var(--primary-deep-green);">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('totalLiquidBalance')" style="border: 2px solid var(--primary-deep-green);" title="ক্লিক করে মোট তরল তহবিল ও কে কত টাকা জমা দিয়েছে তার তালিকা দেখুন">
           <div class="stat-icon green">💼</div>
           <div class="stat-info">
             <h4>মোট তরল তহবিল</h4>
             <div class="stat-value" style="color: var(--primary-deep-green);">৳ ${bnNum(stats.totalLiquidBalance)}</div>
+            <div class="stat-click-hint"><span>🔍</span> কে কত জমা দিয়েছে দেখুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('totalDonations')" title="ক্লিক করে মোট যাচাইকৃত অনুদান ও সকল দাতার তালিকা দেখুন">
           <div class="stat-icon green">❤️</div>
           <div class="stat-info">
             <h4>মোট অনুদান (যাচাইকৃত)</h4>
             <div class="stat-value">৳ ${bnNum(stats.totalDonations)}</div>
+            <div class="stat-click-hint"><span>🔍</span> অনুদান তালিকা দেখতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('thisMonthDonations')" title="ক্লিক করে এই মাসের সকল অনুদানের তালিকা দেখুন">
           <div class="stat-icon green">📅</div>
           <div class="stat-info">
             <h4>এই মাসের অনুদান</h4>
             <div class="stat-value">৳ ${bnNum(stats.thisMonthDonations)}</div>
+            <div class="stat-click-hint"><span>🔍</span> বিস্তারিত দেখতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('totalDisbursed')" title="ক্লিক করে মোট বিতরণকৃত সুদমুক্ত ধার গ্রহীতাদের তালিকা দেখুন">
           <div class="stat-icon blue">🤝</div>
           <div class="stat-info">
             <h4>মোট বিতরণকৃত ধার</h4>
             <div class="stat-value">৳ ${bnNum(stats.totalDisbursed)}</div>
+            <div class="stat-click-hint"><span>🔍</span> ঋণগ্রহীতাদের তালিকা দেখুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('totalRepaid')" title="ক্লিক করে ফেরত পাওয়া মূলধন ও কিস্তি আদায়ের তালিকা দেখুন">
           <div class="stat-icon gold">🔄</div>
           <div class="stat-info">
             <h4>ফেরত পাওয়া মূল টাকা</h4>
             <div class="stat-value">৳ ${bnNum(stats.totalRepaid)}</div>
+            <div class="stat-click-hint"><span>🔍</span> আদায়ের তালিকা দেখুন</div>
           </div>
         </div>
-        <div class="stat-card" style="border: 2px solid #D9B84C;">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('outstandingLoans')" style="border: 2px solid #D9B84C;" title="ক্লিক করে বকেয়া ধারের তালিকা ও পাওনাদারদের দেখুন">
           <div class="stat-icon gold">⏳</div>
           <div class="stat-info">
             <h4>মোট বকেয়া ধার (পাওনা)</h4>
             <div class="stat-value" style="color: #9c7b1e;">৳ ${bnNum(stats.outstandingLoans)}</div>
+            <div class="stat-click-hint"><span>🔍</span> বকেয়া তালিকা দেখতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('activeLoansCount')" title="ক্লিক করে বর্তমানে চলমান সক্রিয় ঋণসমূহের তালিকা দেখুন">
           <div class="stat-icon blue">🏃</div>
           <div class="stat-info">
             <h4>চলমান ঋণের সংখ্যা</h4>
             <div class="stat-value">${bnNum(stats.activeLoansCount)} টি</div>
+            <div class="stat-click-hint"><span>🔍</span> বিস্তারিত দেখতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('upcomingCount')" title="ক্লিক করে আগামী ৩ দিনের মধ্যে ফেরতযোগ্য ধারের তালিকা দেখুন">
           <div class="stat-icon gold">⏰</div>
           <div class="stat-info">
             <h4>আসন্ন ফেরতের সংখ্যা (৩ দিন)</h4>
             <div class="stat-value">${bnNum(stats.upcomingCount)} টি</div>
+            <div class="stat-click-hint"><span>🔍</span> অ্যালার্ট তালিকা দেখুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('dueTodayCount')" title="ক্লিক করে আজকেই পরিশোধের নির্ধারিত ধারের তালিকা দেখুন">
           <div class="stat-icon red">🎯</div>
           <div class="stat-info">
             <h4>আজ ফেরতের নির্ধারিত ধার</h4>
             <div class="stat-value">${bnNum(stats.dueTodayCount)} টি</div>
+            <div class="stat-click-hint"><span>🔍</span> আজকের তালিকা দেখুন</div>
           </div>
         </div>
-        <div class="stat-card" style="border: 2px solid var(--warning-red);">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('overdueCount')" style="border: 2px solid var(--warning-red);" title="ক্লিক করে সকল মেয়াদোত্তীর্ণ বকেয়া ধারের তালিকা দেখুন">
           <div class="stat-icon red">⚠️</div>
           <div class="stat-info">
             <h4>মেয়াদোত্তীর্ণ ধার</h4>
             <div class="stat-value" style="color: var(--warning-red);">${bnNum(stats.overdueCount)} টি</div>
+            <div class="stat-click-hint" style="color: var(--warning-red);"><span>🚨</span> লাল সতর্কতা তালিকা দেখুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('thisMonthExpenses')" title="ক্লিক করে এই মাসের অনুমোদিত সকল খরচের তালিকা দেখুন">
           <div class="stat-icon red">🧾</div>
           <div class="stat-info">
             <h4>এই মাসের অনুমোদিত ব্যয়</h4>
             <div class="stat-value">৳ ${bnNum(stats.thisMonthExpenses)}</div>
+            <div class="stat-click-hint"><span>🔍</span> খরচ বিবরণী দেখতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('pendingBkashCount')" title="ক্লিক করে অপেক্ষমাণ বিকাশ পেমেন্ট তালিকা দেখুন ও যাচাই করুন">
           <div class="stat-icon gold">⏳</div>
           <div class="stat-info">
             <h4>অপেক্ষমাণ পেমেন্ট যাচাই</h4>
             <div class="stat-value">${bnNum(stats.pendingBkashCount)} টি</div>
+            <div class="stat-click-hint"><span>🔍</span> যাচাই করতে ক্লিক করুন</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable" onclick="App.showStatDetailsModal('pendingApplicationsCount')" title="ক্লিক করে অপেক্ষমাণ ঋণ আবেদনসমূহ দেখুন">
           <div class="stat-icon blue">📑</div>
           <div class="stat-info">
             <h4>অপেক্ষমাণ আবেদন</h4>
             <div class="stat-value">${bnNum(stats.pendingApplicationsCount)} টি</div>
+            <div class="stat-click-hint"><span>🔍</span> আবেদন তালিকা দেখতে ক্লিক করুন</div>
+          </div>
+        </div>
+        <div class="stat-card clickable" onclick="App.navigateAdmin('welfare')" style="border: 2px solid #1b5e20;" title="ক্লিক করে সকল এককালীন অনুদান, মানবিক সহায়তা ও ত্রাণ বিতরণ দেখুন">
+          <div class="stat-icon green" style="background: #e8f5e9; color: #1b5e20;">🌾</div>
+          <div class="stat-info">
+            <h4>এককালীন ত্রাণ ও সহায়তা</h4>
+            <div class="stat-value" style="color: #1b5e20;">৳ ${bnNum(stats.totalWelfareAid || 0)}</div>
+            <div class="stat-click-hint" style="color: #1b5e20;"><span>🔍</span> ত্রাণ অডিট খাতা দেখুন</div>
+          </div>
+        </div>
+        <div class="stat-card clickable" onclick="App.navigateAdmin('welfare')" title="ক্লিক করে ত্রাণ ও মানবিক সহায়তায় উপকৃতদের তালিকা দেখুন">
+          <div class="stat-icon gold" style="background: #fff8e1; color: #b78103;">👨‍👩‍👧‍👦</div>
+          <div class="stat-info">
+            <h4>উপকৃত পরিবার/ব্যক্তি (ত্রাণ)</h4>
+            <div class="stat-value">${bnNum(stats.totalWelfareBeneficiaries || 0)} জন</div>
+            <div class="stat-click-hint"><span>🔍</span> ${bnNum(stats.totalWelfareActivities || 0)}টি কার্যক্রমের ভাউচার দেখুন</div>
           </div>
         </div>
       </div>
@@ -3378,42 +4015,155 @@ const Components = {
         </div>
       </div>
 
-      <!-- Foundation Advisory Board & Committee Showcase on Dashboard -->
-      <div class="card" style="margin-top: 24px;">
-        <div class="card-header">
-          <div>
-            <div class="card-title">👥 সম্মানিত উপদেষ্টা মণ্ডলী ও পরিচালনা পরিষদ</div>
-            <div style="font-size: 0.82rem; color: #52665D; margin-top: 2px;">সংস্থার সম্মানিত ৯ জন উপদেষ্টা ও পরিচালনা পরিষদ সদস্যবৃন্দের সচিত্র পরিচিতি</div>
-          </div>
-          ${(App.state.user && (App.state.user.role === 'superadmin' || App.state.user.role === 'admin' || App.state.user.username === 'admin' || App.state.user.username === 'Shahalam69')) ? `
-            <button class="btn btn-primary btn-sm" onclick="App.navigateAdmin('committee')">
-              👑 উপদেষ্টা ও সদস্য পরিবর্তন / যোগ করুন
-            </button>
-          ` : `
-            <span style="font-size: 0.85rem; color: #52665D;">সুপার এডমিন কর্তৃক নিয়ন্ত্রিত</span>
-          `}
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-          ${(App.state.committee || []).map(m => `
-            <div style="background: var(--bg-page); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px 12px; text-align: center; box-shadow: var(--shadow-sm); position: relative; display: flex; flex-direction: column; justify-content: space-between;">
+      <!-- 1. Dedicated Dashboard Card: সম্মানিত উপদেষ্টা পরিষদ ও শরীয়াহ মণ্ডলী -->
+      ${(() => {
+        const comList = App.state.committee || [];
+        const advMembers = comList.filter(m => m.committee_type === 'উপদেষ্টা পরিষদ');
+        const isSuperAdmin = (App.state.user && (App.state.user.role === 'superadmin' || App.state.user.role === 'admin' || App.state.user.username === 'admin' || App.state.user.username === 'Shahalam69'));
+
+        return `
+          <div id="adminDashboardAdvisorsCard" class="card" style="margin-top: 24px; border-top: 4px solid var(--accent-gold);">
+            <div class="card-header" style="flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center;">
               <div>
-                <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent-gold); margin: 0 auto 10px; overflow: hidden; background: #E8F5EC; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.12);">
-                  ${m.photo_url ? `<img src="${m.photo_url}" alt="${m.name_bn}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-size: 34px;">👤</span>`}
-                </div>
-                <h4 style="font-size: 0.98rem; color: var(--primary-deep-green); font-weight: 700; margin-bottom: 4px; line-height: 1.35;">${m.name_bn}</h4>
-                <div style="display: inline-block; background: var(--primary-light-green); color: var(--primary-dark-green); padding: 4px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; margin-bottom: 6px; line-height: 1.3;">
-                  ${m.designation_bn}
+                <div class="card-title" style="color: #8c6e14;">🎖️ সম্মানিত উপদেষ্টা পরিষদ ও শরীয়াহ মণ্ডলী</div>
+                <div style="font-size: 0.84rem; color: #52665D; margin-top: 2px;">
+                  ফাউন্ডেশনের সম্মানিত নীতি ও শরীয়াহ উপদেষ্টাবৃন্দ: <strong>${bnNum(advMembers.length)} জন</strong>
                 </div>
               </div>
-              ${m.mobile ? `
-                <div style="font-size: 0.82rem; margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border-color);">
-                  <a href="tel:${m.mobile}" style="color: #075B3B; text-decoration: none; font-weight: 600;">📞 ${m.mobile}</a>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span class="badge" style="background: rgba(200, 149, 44, 0.12); color: #8c6e14; font-weight: 700; font-size: 0.85rem; padding: 4px 10px; border-radius: 12px;">
+                  উপদেষ্টা পর্ষদ (${bnNum(advMembers.length)} জন)
+                </span>
+                ${isSuperAdmin ? `
+                  <button class="btn btn-gold btn-sm" onclick="App.navigateAdmin('advisors')">
+                    🎖️ উপদেষ্টা পরিষদ ব্যবস্থাপনা ➔
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+              ${advMembers.map(m => {
+                const cleanWa = (m.whatsapp || m.mobile || '').replace(/[^0-9]/g, '');
+
+                return `
+                  <div style="background: var(--bg-page); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px 12px; text-align: center; box-shadow: var(--shadow-sm); position: relative; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer;" onclick="App.openMemberDetailsModal(${m.id})">
+                    <div style="position: absolute; top: 8px; right: 8px; font-size: 0.7rem; font-weight: 700; background: rgba(200, 149, 44, 0.12); color: #8c6e14; padding: 2px 6px; border-radius: 8px;">
+                      উপদেষ্টা #${bnNum(m.display_order || 1)}
+                    </div>
+                    <div>
+                      <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent-gold); margin: 0 auto 10px; overflow: hidden; background: #FFF8E1; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.12);">
+                        ${m.photo_url ? `<img src="${m.photo_url}" alt="${m.name_bn}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-size: 34px;">👤</span>`}
+                      </div>
+                      <h4 style="font-size: 0.98rem; color: #8c6e14; font-weight: 700; margin-bottom: 4px; line-height: 1.35;">${m.name_bn}</h4>
+                      <div style="display: inline-block; background: #fff8e1; color: #8c6e14; border: 1px solid #ffe082; padding: 4px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; margin-bottom: 4px; line-height: 1.3;">
+                        ${m.designation_bn}
+                      </div>
+                      ${m.profession ? `
+                        <div style="font-size: 0.76rem; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 2px 6px; display: inline-block; margin-top: 4px;">
+                          👔 ${m.profession}
+                        </div>
+                      ` : ''}
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 6px; border-top: 1px dashed var(--border-color); display: flex; justify-content: center; gap: 8px;">
+                      ${m.mobile ? `
+                        <a href="tel:${m.mobile}" onclick="event.stopPropagation()" style="color: #075B3B; text-decoration: none; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 3px;">
+                          📞 কল
+                        </a>
+                      ` : ''}
+                      ${cleanWa ? `
+                        <a href="https://wa.me/88${cleanWa}" target="_blank" onclick="event.stopPropagation()" style="color: #128C7E; text-decoration: none; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 3px;">
+                          💬 WhatsApp
+                        </a>
+                      ` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+              ${advMembers.length === 0 ? `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #777;">
+                  কোনো উপদেষ্টা সদস্য পাওয়া যায়নি।
                 </div>
               ` : ''}
             </div>
-          `).join('')}
-        </div>
-      </div>
+          </div>
+        `;
+      })()}
+
+      <!-- 2. Dedicated Dashboard Card: পরিচালনা পরিষদ (২১+ সদস্য বিশিষ্ট কমিটি) -->
+      ${(() => {
+        const comList = App.state.committee || [];
+        const execMembers = comList.filter(m => (m.committee_type || 'পরিচালনা পরিষদ') === 'পরিচালনা পরিষদ');
+        const isSuperAdmin = (App.state.user && (App.state.user.role === 'superadmin' || App.state.user.role === 'admin' || App.state.user.username === 'admin' || App.state.user.username === 'Shahalam69'));
+
+        return `
+          <div id="adminDashboardExecutiveCard" class="card" style="margin-top: 24px; border-top: 4px solid var(--primary-deep-green);">
+            <div class="card-header" style="flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center;">
+              <div>
+                <div class="card-title" style="color: #075B3B;">🏛️ সম্মানিত পরিচালনা পরিষদ (২১+ সদস্য বিশিষ্ট কমিটি)</div>
+                <div style="font-size: 0.84rem; color: #52665D; margin-top: 2px;">
+                  ফাউন্ডেশনের ২১+ সদস্যের নির্বাহী কমিটির সদস্য সংখ্যা: <strong>${bnNum(execMembers.length)} জন</strong>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span class="badge" style="background: rgba(7, 91, 59, 0.1); color: #075B3B; font-weight: 700; font-size: 0.85rem; padding: 4px 10px; border-radius: 12px;">
+                  টার্গেট ২১+ (${bnNum(execMembers.length)} জন যুক্ত)
+                </span>
+                ${isSuperAdmin ? `
+                  <button class="btn btn-primary btn-sm" onclick="App.navigateAdmin('committee')">
+                    🏛️ পরিচালনা পরিষদ ব্যবস্থাপনা ➔
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+              ${execMembers.map(m => {
+                const cleanWa = (m.whatsapp || m.mobile || '').replace(/[^0-9]/g, '');
+
+                return `
+                  <div style="background: var(--bg-page); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px 12px; text-align: center; box-shadow: var(--shadow-sm); position: relative; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer;" onclick="App.openMemberDetailsModal(${m.id})">
+                    <div style="position: absolute; top: 8px; right: 8px; font-size: 0.7rem; font-weight: 700; background: rgba(7, 91, 59, 0.1); color: #075B3B; padding: 2px 6px; border-radius: 8px;">
+                      পরিচালনা #${bnNum(m.display_order || 1)}
+                    </div>
+                    <div>
+                      <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent-gold); margin: 0 auto 10px; overflow: hidden; background: #E8F5EC; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.12);">
+                        ${m.photo_url ? `<img src="${m.photo_url}" alt="${m.name_bn}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-size: 34px;">👤</span>`}
+                      </div>
+                      <h4 style="font-size: 0.98rem; color: var(--primary-deep-green); font-weight: 700; margin-bottom: 4px; line-height: 1.35;">${m.name_bn}</h4>
+                      <div style="display: inline-block; background: var(--primary-light-green); color: var(--primary-dark-green); padding: 4px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; margin-bottom: 4px; line-height: 1.3;">
+                        ${m.designation_bn}
+                      </div>
+                      ${m.profession ? `
+                        <div style="font-size: 0.76rem; color: #855300; background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 2px 6px; display: inline-block; margin-top: 4px;">
+                          👔 ${m.profession}
+                        </div>
+                      ` : ''}
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 6px; border-top: 1px dashed var(--border-color); display: flex; justify-content: center; gap: 8px;">
+                      ${m.mobile ? `
+                        <a href="tel:${m.mobile}" onclick="event.stopPropagation()" style="color: #075B3B; text-decoration: none; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 3px;">
+                          📞 কল
+                        </a>
+                      ` : ''}
+                      ${cleanWa ? `
+                        <a href="https://wa.me/88${cleanWa}" target="_blank" onclick="event.stopPropagation()" style="color: #128C7E; text-decoration: none; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 3px;">
+                          💬 WhatsApp
+                        </a>
+                      ` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+              ${execMembers.length === 0 ? `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #777;">
+                  কোনো পরিচালনা পরিষদ সদস্য পাওয়া যায়নি।
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      })()}
+
+
     `;
   }
 };

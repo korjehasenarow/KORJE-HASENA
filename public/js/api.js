@@ -1,11 +1,12 @@
 // API Client for Karje Hasana Foundation
 
 const API = {
-  baseUrl: '',
+  baseUrl: (typeof window !== 'undefined' && window.location.protocol === 'file:') ? 'http://localhost:3000' : '',
 
   async request(endpoint, options = {}) {
     const url = this.baseUrl + endpoint;
     const headers = options.headers || {};
+    headers['Bypass-Tunnel-Reminder'] = 'true';
 
     try {
       const savedUser = localStorage.getItem('kh_user');
@@ -50,8 +51,11 @@ const API = {
 
   // Donors
   getDonors: (params = '') => API.request('/api/donors' + (params ? '?' + params : '')),
+  getFeaturedDonors: () => API.request('/api/public/featured-donors'),
   getDonor: (id) => API.request(`/api/donors/${id}`),
   createDonor: (data) => API.request('/api/donors', { method: 'POST', body: data instanceof FormData ? data : JSON.stringify(data) }),
+  updateDonor: (id, data) => API.request(`/api/donors/${id}`, { method: 'PUT', body: data instanceof FormData ? data : JSON.stringify(data) }),
+  deleteDonor: (id) => API.request(`/api/donors/${id}`, { method: 'DELETE' }),
 
   // Committee (Managing & Advisory Board)
   getCommittee: () => API.request('/api/committee'),
@@ -88,6 +92,14 @@ const API = {
   // Expenses
   getExpenses: () => API.request('/api/expenses'),
   createExpense: (data) => API.request('/api/expenses', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Welfare & Humanitarian Relief Grants (এককালীন সহায়তা ও ত্রাণ)
+  getWelfareGrants: (params = '') => API.request('/api/welfare-grants' + (params ? '?' + params : '')),
+  getWelfareGrant: (id) => API.request(`/api/welfare-grants/${id}`),
+  createWelfareGrant: (data) => API.request('/api/welfare-grants', { method: 'POST', body: data instanceof FormData ? data : JSON.stringify(data) }),
+  updateWelfareGrant: (id, data) => API.request(`/api/welfare-grants/${id}`, { method: 'PUT', body: data instanceof FormData ? data : JSON.stringify(data) }),
+  deleteWelfareGrant: (id, params = '') => API.request(`/api/welfare-grants/${id}` + (params ? '?' + params : ''), { method: 'DELETE' }),
+  getPublicWelfareSummary: () => API.request('/api/public/welfare-summary'),
 
   // Transfers
   transferAccount: (data) => API.request('/api/transfers', { method: 'POST', body: JSON.stringify(data) }),

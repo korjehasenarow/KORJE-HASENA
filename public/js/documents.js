@@ -417,5 +417,97 @@ const DocumentGenerator = {
         ${this.renderSignatures('balance_sheet')}
       </div>
     `;
+  },
+
+  // 12. এককালীন অনুদান, মানবিক সহায়তা ও ত্রাণ বিতরণ ভাউচার (Audit & Transparency Voucher)
+  generateWelfareGrantVoucher(org, grant) {
+    return `
+      <div class="document-container" id="printableVoucherArea">
+        ${this.renderHeader(org, 'এককালীন অনুদান, মানবিক সহায়তা ও ত্রাণ বিতরণ ভাউচার', grant.voucher_no || grant.id, grant.date)}
+
+        <div style="background: #FAF8F5; border: 1.5px solid #D9B84C; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <span style="font-size: 0.85rem; color: #555;">সহায়তার খাত / ক্যাটাগরি:</span>
+              <div style="font-size: 1.15rem; font-weight: 800; color: #075B3B;">🌾 ${grant.category}</div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.85rem; color: #555;">মোট সহায়তার পরিমাণ:</span>
+              <div style="font-size: 1.35rem; font-weight: 800; color: #C62828;">৳ ${bnNum(grant.amount)}</div>
+            </div>
+          </div>
+        </div>
+
+        <table class="data-table" style="margin-bottom: 20px;">
+          <tr>
+            <th colspan="2" style="background: #075B3B; color: white;">১. প্রকল্প ও সুবিধাভোগীর তথ্য</th>
+          </tr>
+          <tr>
+            <td style="width: 35%; font-weight: 600;">সহায়তা/প্রকল্পের শিরোনাম:</td>
+            <td><strong>${grant.title_bn}</strong></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">সুবিধাভোগীর নাম / প্রতিনিধি:</td>
+            <td><strong>${grant.beneficiary_name}</strong></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">মোবাইল নম্বর:</td>
+            <td style="font-family: var(--font-en);">${grant.beneficiary_mobile || 'প্রযোজ্য নয়'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">জাতীয় পরিচয়পত্র (NID):</td>
+            <td style="font-family: var(--font-en);">${grant.beneficiary_nid || 'প্রযোজ্য নয়'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">ঠিকানা (গ্রাম/ওয়ার্ড/ইউনিয়ন):</td>
+            <td>${grant.beneficiary_address || 'রৌমারী, কুড়িগ্রাম'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">উপকৃত পরিবার / ব্যক্তির সংখ্যা:</td>
+            <td>${bnNum(grant.beneficiary_count || 1)} জন / পরিবার</td>
+          </tr>
+
+          <tr>
+            <th colspan="2" style="background: #075B3B; color: white;">২. আর্থিক অনুমোদন ও তহবিলের বিবরণ</th>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">প্রদেয় তহবিল (Fund):</td>
+            <td><strong>${grant.fund_name || 'সাধারণ অনুদান তহবিল'}</strong></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">পরিশোধ মাধ্যম ও ব্যাংক হিসাব:</td>
+            <td><strong>${grant.account_name || 'হাতে নগদ (Cash in Hand)'}</strong></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">অনুমোদনকারী কর্তৃপক্ষ:</td>
+            <td>${grant.approved_by || 'উপদেষ্টা পরিষদ ও পরিচালনা কমিটি'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">বিস্তারিত উদ্দেশ্য ও বিবরণ:</td>
+            <td>${grant.description || 'মানবিক সহায়তা প্রদান করা হয়েছে।'}</td>
+          </tr>
+          ${grant.impact_notes ? `
+          <tr>
+            <td style="font-weight: 600;">বাস্তবায়ন ফলাফল ও মন্তব্য:</td>
+            <td style="color: #075B3B; font-weight: 600;">${grant.impact_notes}</td>
+          </tr>
+          ` : ''}
+        </table>
+
+        ${grant.photo_url ? `
+        <div style="margin-bottom: 24px; text-align: center; border: 1px dashed #075B3B; border-radius: 8px; padding: 12px; background: #fff;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: #075B3B; margin-bottom: 8px;">📷 সহায়তা বিতরণ মুহূর্তের প্রমাণক ছবি / ভাউচার রসিদ:</div>
+          <img src="${grant.photo_url}" alt="প্রমাণক ছবি" style="max-height: 240px; max-width: 100%; border-radius: 6px; object-fit: contain; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        </div>
+        ` : ''}
+
+        <div style="margin-top: 40px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; text-align: center; font-size: 0.82rem;">
+          <div style="border-top: 1px dashed #777; padding-top: 6px;">উপকারভোগীর স্বাক্ষর / টিপসহি</div>
+          <div style="border-top: 1px dashed #777; padding-top: 6px;">তদন্তকারী / এন্ট্রি কর্মকর্তা</div>
+          <div style="border-top: 1px dashed #777; padding-top: 6px;">হিসাবরক্ষক (Accountant)</div>
+          <div style="border-top: 1px dashed #777; padding-top: 6px;">প্রতিষ্ঠাতা চেয়ারম্যান<br><span style="font-size: 0.75rem; color: #075B3B; font-weight: 700;">MD SHAH ALAM</span></div>
+        </div>
+      </div>
+    `;
   }
 };
