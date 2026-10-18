@@ -2,11 +2,52 @@ const fs = require('fs');
 const path = require('path');
 const initSqlJs = require('sql.js');
 
+let pg = null;
+try {
+  pg = require('pg');
+} catch (e) {
+  console.log('[DB] Optional pg dependency not loaded');
+}
+
 const DB_DIR = path.join(__dirname, 'data');
 const DB_PATH = path.join(DB_DIR, 'korje_hasena.sqlite');
 
 let dbInstance = null;
 let SQL = null;
+let pgPool = null;
+let cloudSyncTimer = null;
+let lastCloudSyncTime = null;
+let isCloudSyncing = false;
+let currentDataVersion = Date.now();
+
+function getDataVersion() {
+  return currentDataVersion;
+}
+
+function bumpDataVersion() {
+  currentDataVersion = Date.now();
+  return currentDataVersion;
+}
+
+function getPgPool() {
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!dbUrl || !pg) return null;
+  if (!pgPool) {
+    try {
+      const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
+      pgPool = new pg.Pool({
+        connectionString: dbUrl,
+        ssl: isLocal ? false : { rejectUnauthorized: false }
+      });
+      pgPool.on('error', (err) => {
+        console.error('[CLOUD-DB] PostgreSQL Pool Error:', err.message);
+      });
+    } catch (e) {
+      console.error('[CLOUD-DB] Error initializing pg pool:', e.message);
+    }
+  }
+  return pgPool;
+}
 
 async function getDb() {
   if (dbInstance) return dbInstance;
@@ -31,12 +72,56 @@ async function getDb() {
     }
   }
 
+  // Check if Persistent Cloud PostgreSQL snapshot is available
+  let loadedFromCloud = false;
+  const pool = getPgPool();
+  if (pool) {
+    try {
+      console.log('[CLOUD-DB] Checking PostgreSQL for persistent system snapshots...');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS system_snapshots (
+          id VARCHAR(64) PRIMARY KEY,
+          sqlite_data BYTEA NOT NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          metadata JSONB
+        );
+      `);
+
+      const res = await pool.query(
+        `SELECT sqlite_data, updated_at FROM system_snapshots WHERE id = 'production_latest' LIMIT 1;`
+      );
+
+      if (res.rows.length > 0 && res.rows[0].sqlite_data) {
+        const cloudBuffer = res.rows[0].sqlite_data;
+        fs.writeFileSync(DB_PATH, cloudBuffer);
+        lastCloudSyncTime = res.rows[0].updated_at;
+        loadedFromCloud = true;
+        console.log(`[CLOUD-DB] ✓ Successfully loaded persistent database snapshot from PostgreSQL! (${cloudBuffer.length} bytes, updated: ${res.rows[0].updated_at})`);
+      } else {
+        console.log('[CLOUD-DB] No existing snapshot found in PostgreSQL yet. Initial snapshot will be uploaded.');
+        if (fs.existsSync(DB_PATH)) {
+          const localBuf = fs.readFileSync(DB_PATH);
+          await pool.query(
+            `INSERT INTO system_snapshots (id, sqlite_data, updated_at, metadata)
+             VALUES ('production_latest', $1, CURRENT_TIMESTAMP, $2)
+             ON CONFLICT (id) DO NOTHING;`,
+            [localBuf, JSON.stringify({ reason: 'initial_seed_upload', time: new Date().toISOString() })]
+          );
+          lastCloudSyncTime = new Date();
+          console.log('[CLOUD-DB] ✓ Uploaded initial database to PostgreSQL as production_latest.');
+        }
+      }
+    } catch (cloudErr) {
+      console.error('[CLOUD-DB] Warning: Could not sync with PostgreSQL on boot:', cloudErr.message);
+    }
+  }
+
   SQL = await initSqlJs();
 
   if (fs.existsSync(DB_PATH)) {
     const fileBuffer = fs.readFileSync(DB_PATH);
     dbInstance = new SQL.Database(fileBuffer);
-    console.log('[DB] Loaded existing SQLite database from disk.');
+    console.log(`[DB] Loaded SQLite database from disk (${fileBuffer.length} bytes)${loadedFromCloud ? ' [Synced with Cloud Postgres]' : ''}.`);
   } else {
     dbInstance = new SQL.Database();
     console.log('[DB] Initialized new in-memory SQLite database.');
@@ -48,7 +133,7 @@ async function getDb() {
   // Run migrations/tables init
   initSchema(dbInstance);
 
-  // Save to disk
+  // Save to disk and cloud
   saveDbToDisk();
 
   return dbInstance;
@@ -64,9 +149,89 @@ function saveDbToDisk() {
     const data = dbInstance.export();
     const buffer = Buffer.from(data);
     fs.writeFileSync(DB_PATH, buffer);
+
+    // Schedule persistent cloud sync
+    scheduleCloudSync(buffer);
   } catch (err) {
     console.error('[DB] Error saving database to disk:', err);
   }
+}
+
+function scheduleCloudSync(buffer) {
+  const pool = getPgPool();
+  if (!pool) return;
+
+  if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+
+  cloudSyncTimer = setTimeout(async () => {
+    if (isCloudSyncing) return;
+    isCloudSyncing = true;
+    try {
+      const dataToSave = buffer || (dbInstance ? Buffer.from(dbInstance.export()) : null);
+      if (!dataToSave) return;
+
+      await pool.query(
+        `INSERT INTO system_snapshots (id, sqlite_data, updated_at, metadata)
+         VALUES ('production_latest', $1, CURRENT_TIMESTAMP, $2)
+         ON CONFLICT (id) DO UPDATE SET
+           sqlite_data = EXCLUDED.sqlite_data,
+           updated_at = CURRENT_TIMESTAMP,
+           metadata = EXCLUDED.metadata;`,
+        [dataToSave, JSON.stringify({ synced_at: new Date().toISOString(), size: dataToSave.length })]
+      );
+      lastCloudSyncTime = new Date();
+      console.log(`[CLOUD-DB] ✓ Database changes permanently saved to PostgreSQL! (${dataToSave.length} bytes at ${lastCloudSyncTime.toLocaleTimeString()})`);
+    } catch (err) {
+      console.error('[CLOUD-DB] Error saving database to PostgreSQL:', err.message);
+    } finally {
+      isCloudSyncing = false;
+    }
+  }, 1000); // 1-second debounce
+}
+
+async function flushCloudSync() {
+  const pool = getPgPool();
+  if (!pool || !dbInstance) return;
+  try {
+    const dataToSave = Buffer.from(dbInstance.export());
+    await pool.query(
+      `INSERT INTO system_snapshots (id, sqlite_data, updated_at, metadata)
+       VALUES ('production_latest', $1, CURRENT_TIMESTAMP, $2)
+       ON CONFLICT (id) DO UPDATE SET
+         sqlite_data = EXCLUDED.sqlite_data,
+         updated_at = CURRENT_TIMESTAMP,
+         metadata = EXCLUDED.metadata;`,
+      [dataToSave, JSON.stringify({ synced_at: new Date().toISOString(), size: dataToSave.length, reason: 'shutdown_flush' })]
+    );
+    lastCloudSyncTime = new Date();
+    console.log('[CLOUD-DB] ✓ Clean shutdown: Database changes flushed to PostgreSQL.');
+  } catch (err) {
+    console.error('[CLOUD-DB] Error during shutdown flush:', err.message);
+  }
+}
+
+// Graceful shutdown listeners for Render and container environments
+process.on('SIGTERM', async () => {
+  console.log('[PROCESS] SIGTERM received. Flushing cloud database...');
+  await flushCloudSync();
+});
+
+process.on('SIGINT', async () => {
+  console.log('[PROCESS] SIGINT received. Flushing cloud database...');
+  await flushCloudSync();
+});
+
+function getStorageStatus() {
+  const isCloudPersisted = !!(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+  return {
+    isCloudPersisted,
+    engine: isCloudPersisted ? 'PostgreSQL (Cloud Persistent Sync)' : 'SQLite (Local File)',
+    lastCloudSyncTime,
+    dbPath: DB_PATH,
+    warning: (!isCloudPersisted && (process.env.RENDER || process.env.NODE_ENV === 'production'))
+      ? 'Render ফ্রি সার্ভারে ডাটাবেজ স্থায়ীভাবে সুরক্ষিত রাখতে Environment Variables-এ DATABASE_URL যুক্ত করুন।'
+      : null
+  };
 }
 
 function initSchema(db) {
@@ -575,6 +740,7 @@ function run(sql, params = []) {
     dbInstance.run(sql);
   }
   saveDbToDisk();
+  currentDataVersion = Date.now();
   return { success: true };
 }
 
@@ -594,6 +760,7 @@ function transaction(fn) {
     }});
     dbInstance.run('COMMIT;');
     saveDbToDisk();
+    currentDataVersion = Date.now();
     return result;
   } catch (err) {
     dbInstance.run('ROLLBACK;');
@@ -611,6 +778,7 @@ function restoreDbFromBuffer(buffer) {
   if (!SQL) throw new Error('SQL engine not loaded');
   dbInstance = new SQL.Database(buffer);
   saveDbToDisk();
+  currentDataVersion = Date.now();
   return true;
 }
 
@@ -622,5 +790,9 @@ module.exports = {
   transaction,
   exportDbBuffer,
   restoreDbFromBuffer,
-  saveDbToDisk
+  saveDbToDisk,
+  getStorageStatus,
+  flushCloudSync,
+  getDataVersion,
+  bumpDataVersion
 };

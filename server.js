@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const multer = require('multer');
 const db = require('./db');
 
@@ -49,6 +50,24 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Persistent Photo Helper: Converts uploaded image to Base64 Data URI
+// This guarantees images are stored directly in the database and never lost on ephemeral cloud platforms (Render, Vercel, Railway, etc.)
+function fileToDataUrl(file) {
+  if (!file || !file.path) return null;
+  try {
+    if (fs.existsSync(file.path)) {
+      const buffer = fs.readFileSync(file.path);
+      if (buffer.length <= 4 * 1024 * 1024) { // Up to 4MB
+        const mime = file.mimetype || 'image/jpeg';
+        return `data:${mime};base64,${buffer.toString('base64')}`;
+      }
+    }
+  } catch (err) {
+    console.error('[FILE HELPER ERROR]', err.message);
+  }
+  return null;
+}
 
 // Audit log helper
 function logAudit(userId, userName, action, module, recordId, details, req) {
@@ -309,7 +328,7 @@ app.post('/api/committee', upload.single('photo'), (req, res) => {
       return res.status(400).json({ success: false, message: 'সদস্যের নাম ও পদবি প্রদান করুন।' });
     }
 
-    const photoUrl = req.file ? '/uploads/committee/' + req.file.filename : (req.body.photo_url || '');
+    const photoUrl = req.file ? (fileToDataUrl(req.file) || ('/uploads/committee/' + req.file.filename)) : (req.body.photo_url || '');
 
     db.run(
       `INSERT INTO committee_members (name_bn, name_en, designation_bn, mobile, whatsapp, address, profession, committee_type, email, photo_url, bio_bn, display_order, is_active, created_at)
@@ -345,7 +364,7 @@ app.put('/api/committee/:id', upload.single('photo'), (req, res) => {
       return res.status(404).json({ success: false, message: 'সদস্য খুঁজে পাওয়া যায়নি।' });
     }
 
-    const photoUrl = req.file ? '/uploads/committee/' + req.file.filename : (req.body.photo_url || existing.photo_url);
+    const photoUrl = req.file ? (fileToDataUrl(req.file) || ('/uploads/committee/' + req.file.filename)) : (req.body.photo_url || existing.photo_url);
 
     db.run(
       `UPDATE committee_members SET
@@ -395,6 +414,96 @@ app.delete('/api/committee/:id', (req, res) => {
     logAudit(req.query.user_id || req.headers['x-user-id'] || 'admin', req.query.user_name || 'Super Admin', 'DELETE', 'committee', String(memberId), `Deleted committee member: ${existing.name_bn}`, req);
     res.json({ success: true, message: 'কমিটি সদস্য সফলভাবে অপসারিত হয়েছে।' });
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Storage & Persistence Status Endpoint
+app.get('/api/system/storage-status', (req, res) => {
+  try {
+    const status = db.getStorageStatus();
+    res.json({ success: true, data: status });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Live Real-Time Data Version Endpoint (Powers Instant Multi-Device Sync between Mobile & Laptop)
+app.get('/api/system/live-version', (req, res) => {
+  res.json({
+    success: true,
+    version: db.getDataVersion ? db.getDataVersion() : Date.now(),
+    serverTime: Date.now()
+  });
+});
+
+// Network Info for Mobile and Laptop Connectivity
+function getLocalIpAddress() {
+  try {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+  } catch (e) {}
+  return 'localhost';
+}
+
+app.get('/api/system/network-info', (req, res) => {
+  const localIp = getLocalIpAddress();
+  let tunnelUrl = null;
+  try {
+    const tunnelFilePath = path.join(__dirname, 'data', 'tunnel_url.txt');
+    if (fs.existsSync(tunnelFilePath)) {
+      tunnelUrl = fs.readFileSync(tunnelFilePath, 'utf8').trim();
+    }
+  } catch (e) {}
+
+  res.json({
+    success: true,
+    localIp,
+    port: PORT,
+    wifiUrl: `http://${localIp}:${PORT}`,
+    localhostUrl: `http://localhost:${PORT}`,
+    tunnelUrl: tunnelUrl || global.activeTunnelUrl || null,
+    isTunnelActive: !!(tunnelUrl || global.activeTunnelUrl)
+  });
+});
+
+// 1-Click Online Tunnel API for Instant Mobile Access Anywhere
+let activeTunnelInstance = null;
+app.post('/api/system/start-tunnel', async (req, res) => {
+  try {
+    let localtunnel = null;
+    try { localtunnel = require('localtunnel'); } catch (e) {}
+    if (!localtunnel) {
+      return res.status(500).json({ success: false, message: 'localtunnel প্যাকেজটি ইনস্টল করা নেই।' });
+    }
+    if (global.activeTunnelUrl) {
+      return res.json({ success: true, url: global.activeTunnelUrl, message: 'টানেল ইতিপূর্বে চালু রয়েছে।' });
+    }
+    const sub = 'korjehasena-' + Math.floor(1000 + Math.random() * 9000);
+    const tunnel = await localtunnel({ port: PORT, subdomain: sub });
+    global.activeTunnelUrl = tunnel.url;
+    activeTunnelInstance = tunnel;
+
+    try {
+      fs.writeFileSync(path.join(__dirname, 'data', 'tunnel_url.txt'), tunnel.url, 'utf8');
+    } catch (e) {}
+
+    tunnel.on('close', () => {
+      global.activeTunnelUrl = null;
+      activeTunnelInstance = null;
+      try { fs.unlinkSync(path.join(__dirname, 'data', 'tunnel_url.txt')); } catch (e) {}
+    });
+
+    console.log(`[TUNNEL] Mobile Online Tunnel Active: ${tunnel.url}`);
+    res.json({ success: true, url: tunnel.url, message: 'অনলাইন টানেল সফলভাবে চালু হয়েছে!' });
+  } catch (err) {
+    console.error('[TUNNEL ERROR]', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -822,7 +931,7 @@ app.post('/api/donors', upload.single('photo'), (req, res) => {
     }
 
     const donorId = 'DON-' + Date.now().toString().slice(-6);
-    const photoUrl = req.file ? '/uploads/' + req.file.filename : (b.photo_url || null);
+    const photoUrl = req.file ? (fileToDataUrl(req.file) || ('/uploads/' + req.file.filename)) : (b.photo_url || null);
 
     const showOnWebsite = b.show_on_website !== undefined ? (b.show_on_website === '0' || b.show_on_website === 0 ? 0 : 1) : 1;
 
@@ -858,7 +967,7 @@ app.put('/api/donors/:id', upload.single('photo'), (req, res) => {
       return res.status(404).json({ success: false, message: 'দাতা খুঁজে পাওয়া যায়নি।' });
     }
 
-    const photoUrl = req.file ? '/uploads/' + req.file.filename : (b.photo_url || existing.photo_url);
+    const photoUrl = req.file ? (fileToDataUrl(req.file) || ('/uploads/' + req.file.filename)) : (b.photo_url || existing.photo_url);
     const showOnWebsite = b.show_on_website !== undefined ? (b.show_on_website === '0' || b.show_on_website === 0 ? 0 : 1) : (existing.show_on_website ?? 1);
 
     db.run(
@@ -2380,11 +2489,13 @@ app.use((req, res) => {
 
 // Start Server
 db.getDb().then(() => {
-  app.listen(PORT, () => {
+  const localIp = getLocalIpAddress();
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`=======================================================`);
     console.log(`  কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম`);
     console.log(`  Karje Hasana Foundation Server running on port ${PORT}`);
-    console.log(`  URL: http://localhost:${PORT}`);
+    console.log(`  • ল্যাপটপ থেকে ব্রাউজারে: http://localhost:${PORT}`);
+    console.log(`  • মোবাইল থেকে (একই ওয়াইফাইয়ে): http://${localIp}:${PORT}`);
     console.log(`=======================================================`);
   });
 }).catch(err => {

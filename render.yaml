@@ -1,3 +1,8 @@
+databases:
+  - name: korje-hasena-db
+    databaseName: korje_hasena
+    plan: free
+
 services:
   - type: web
     name: korje-hasena
@@ -8,3 +13,7 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: korje-hasena-db
+          property: connectionString
