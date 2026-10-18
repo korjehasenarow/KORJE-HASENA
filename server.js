@@ -1549,7 +1549,7 @@ app.delete('/api/donations/:id', (req, res) => {
       if (existing.transaction_reference) {
         run(`
           UPDATE payment_submissions
-          SET status = 'বিবেচনাধীন'
+          SET verification_status = 'অপেক্ষমাণ', associated_donation_id = NULL
           WHERE transaction_id = ?
         `, [existing.transaction_reference]);
       }
@@ -3040,13 +3040,13 @@ app.delete('/api/transactions/:id', (req, res) => {
       if (existing.related_entity_type === 'donations' && existing.related_entity_id) {
         const don = db.get('SELECT transaction_reference FROM donations WHERE id = ?', [existing.related_entity_id]);
         if (don && don.transaction_reference) {
-          run(`UPDATE payment_submissions SET status = 'বিবেচনাধীন' WHERE transaction_id = ?`, [don.transaction_reference]);
+          run(`UPDATE payment_submissions SET verification_status = 'অপেক্ষমাণ', associated_donation_id = NULL WHERE transaction_id = ?`, [don.transaction_reference]);
         }
         run('DELETE FROM donations WHERE id = ?', [existing.related_entity_id]);
       } else if (existing.reference_no && existing.reference_no.startsWith('REC-DON-')) {
         const don = db.get('SELECT transaction_reference FROM donations WHERE receipt_number = ?', [existing.reference_no]);
         if (don && don.transaction_reference) {
-          run(`UPDATE payment_submissions SET status = 'বিবেচনাধীন' WHERE transaction_id = ?`, [don.transaction_reference]);
+          run(`UPDATE payment_submissions SET verification_status = 'অপেক্ষমাণ', associated_donation_id = NULL WHERE transaction_id = ?`, [don.transaction_reference]);
         }
         run('DELETE FROM donations WHERE receipt_number = ?', [existing.reference_no]);
       }

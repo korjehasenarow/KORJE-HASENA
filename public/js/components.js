@@ -186,23 +186,37 @@ const Components = {
       <!-- Hero Banner -->
       <section class="hero-section">
         <div class="hero-content">
-          <div class="hero-tag">স্বচ্ছতা ও মানবতার কল্যাণে সুদমুক্ত সহযোগিতা</div>
+          <div class="hero-tag">
+            <span class="hero-tag-sparkle">✨</span> স্বচ্ছতা ও মানবতার কল্যাণে সুদমুক্ত সহযোগিতা
+          </div>
           <h2 class="hero-title">${org.name_bn || 'কর্জে হাসানা ফাউন্ডেশন'}</h2>
-          <p style="color: var(--accent-gold); font-size: 1.15rem; font-weight: 600; margin-bottom: 12px;">
-            ${org.location || 'রৌমারী, কুড়িগ্রাম, বাংলাদেশ'}
-          </p>
-          <p class="hero-subtitle">
-            “কে সেই ব্যক্তি, যে আল্লাহকে উত্তম ঋণ (কর্জ হাসানা) প্রদান করবে? অতঃপর তিনি তার জন্য তা বহুগুণ বৃদ্ধি করে দেবেন।” (আল-কুরআন, ২:২৪৫)।<br>
-            রৌমারীর অসহায় ও কর্মঠ মানুষের আর্থ-সামাজিক উন্নয়নে সম্পূর্ণ সুদমুক্ত ধার, জরুরি চিকিৎসা ও শিক্ষা সহায়তা প্রদানই আমাদের মূল ব্রত।
-          </p>
+          <div class="hero-location-badge">
+            <span>📍</span> ${org.location || 'রৌমারী, কুড়িগ্রাম, বাংলাদেশ'} 
+            <span class="hero-reg-pill">নিবন্ধিত সুদমুক্ত সেবা</span>
+          </div>
+
+          <!-- Glassmorphism Quranic Ayat & Mission Box -->
+          <div class="hero-quran-box">
+            <div class="hero-quran-icon">📖</div>
+            <div class="hero-quran-content">
+              <p class="hero-quran-ayat">
+                “কে সেই ব্যক্তি, যে আল্লাহকে উত্তম ঋণ (কর্জ হাসানা) প্রদান করবে? অতঃপর তিনি তার জন্য তা বহুগুণ বৃদ্ধি করে দেবেন।”
+                <span class="hero-quran-ref">(সূরা আল-বাকারা, ২:২৪৫)</span>
+              </p>
+              <p class="hero-mission-text">
+                রৌমারীর অসহায় ও কর্মঠ মানুষের আর্থ-সামাজিক উন্নয়নে সম্পূর্ণ সুদমুক্ত ধার, জরুরি চিকিৎসা ও শিক্ষা সহায়তা প্রদানই আমাদের মূল ব্রত।
+              </p>
+            </div>
+          </div>
+
           <div class="hero-buttons">
-            <button class="btn btn-gold" onclick="App.navigate('donate')">
+            <button class="btn-hero-gold" onclick="App.navigate('donate')">
               <span>❤️ অনুদান প্রদান করুন</span>
             </button>
-            <button class="btn btn-outline" onclick="App.navigate('apply')">
+            <button class="btn-hero-emerald" onclick="App.navigate('apply')">
               <span>📝 সুদমুক্ত ধারের আবেদন</span>
             </button>
-            <button class="btn btn-outline-green" style="background:rgba(255,255,255,0.9);" onclick="App.navigate('transparency')">
+            <button class="btn-hero-white" onclick="App.navigate('transparency')">
               <span>📊 স্বচ্ছতা ও হিসাব প্রতিবেদন</span>
             </button>
           </div>

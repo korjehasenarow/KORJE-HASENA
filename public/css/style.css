@@ -367,32 +367,57 @@ body {
   width: 100%;
 }
 
-/* Hero Section */
+/* ============================================================
+   ROYAL ISLAMIC HERO BANNER AESTHETICS (PREMIUM WOW EFFECT)
+   ============================================================ */
 .hero-section {
-  background: linear-gradient(135deg, #053321 0%, #075B3B 55%, #09472e 100%);
-  color: white;
-  padding: 44px 36px;
-  border-radius: var(--radius-lg);
   position: relative;
+  background: 
+    radial-gradient(circle at 12% 20%, rgba(245, 215, 127, 0.22) 0%, transparent 42%),
+    radial-gradient(circle at 88% 80%, rgba(52, 211, 153, 0.25) 0%, transparent 48%),
+    radial-gradient(circle at 50% 40%, rgba(13, 94, 61, 0.45) 0%, transparent 60%),
+    linear-gradient(135deg, #021a0f 0%, #053b24 35%, #085a37 70%, #032616 100%);
+  color: white;
+  padding: 50px 44px;
+  border-radius: 24px;
   overflow: hidden;
-  margin-bottom: 30px;
-  border-bottom: 4px solid var(--accent-gold);
-  box-shadow: 0 10px 30px rgba(7, 91, 59, 0.25);
+  margin-bottom: 32px;
+  border: 1.5px solid rgba(245, 215, 127, 0.45);
+  border-bottom: 6px solid #d4af37;
+  box-shadow: 
+    0 25px 65px -15px rgba(2, 26, 15, 0.75),
+    0 0 45px rgba(212, 175, 55, 0.22),
+    inset 0 1px 2px rgba(255, 255, 255, 0.35);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 36px;
+  transition: all 0.3s ease;
 }
 
+/* Islamic Geometric Shimmer Background Overlay */
 .hero-section::before {
   content: '';
   position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(217, 184, 76, 0.15) 0%, transparent 70%);
+  inset: 0;
+  background-image: 
+    radial-gradient(rgba(212, 175, 55, 0.15) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(255, 255, 255, 0.1) 1.5px, transparent 1.5px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Top Subtle Gold Ambient Glow Bar */
+.hero-section::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 5%;
+  right: 5%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 224, 130, 0.9), transparent);
   pointer-events: none;
 }
 
@@ -400,89 +425,259 @@ body {
   position: relative;
   z-index: 2;
   flex: 1;
-  max-width: 720px;
+  max-width: 740px;
 }
 
 .hero-tag {
-  display: inline-block;
-  background: rgba(217, 184, 76, 0.2);
-  border: 1px solid var(--accent-gold);
-  color: var(--accent-gold);
-  padding: 4px 14px;
-  border-radius: 20px;
-  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.32) 0%, rgba(13, 94, 61, 0.4) 100%);
+  border: 1.5px solid rgba(245, 215, 127, 0.75);
+  color: #fff4cb;
+  padding: 6px 20px;
+  border-radius: 30px;
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   margin-bottom: 16px;
-  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.hero-tag-sparkle {
+  font-size: 1.1rem;
+  display: inline-block;
+  animation: sparkleRotate 3s infinite ease-in-out;
+}
+
+@keyframes sparkleRotate {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.3) rotate(20deg); opacity: 0.8; }
 }
 
 .hero-title {
-  font-size: 2.2rem;
-  font-weight: 800;
-  line-height: 1.3;
-  margin-bottom: 16px;
+  font-size: 2.6rem;
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 0 0 10px 0;
   color: #FFFFFF;
+  text-shadow: 
+    0 3px 15px rgba(0, 0, 0, 0.7),
+    0 0 30px rgba(212, 175, 55, 0.4);
+  letter-spacing: -0.5px;
 }
 
-.hero-subtitle {
-  font-size: 1.05rem;
+.hero-location-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #f7df94;
+  font-size: 1.18rem;
+  font-weight: 700;
+  margin-bottom: 18px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.hero-reg-pill {
+  font-size: 0.78rem;
+  background: rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.7);
+  color: #a7f3d0;
+  padding: 3px 12px;
+  border-radius: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* Quranic Verse Callout Box */
+.hero-quran-box {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-left: 5px solid #d4af37;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 18px 22px;
+  border-radius: 14px;
+  margin-bottom: 26px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.hero-quran-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 10px rgba(212, 175, 55, 0.6));
+}
+
+.hero-quran-content {
+  flex: 1;
+}
+
+.hero-quran-ayat {
+  font-size: 1.08rem;
+  color: #fff9e6;
+  font-weight: 700;
   line-height: 1.7;
-  color: #E2ECE6;
-  margin-bottom: 28px;
+  margin: 0 0 10px 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
+.hero-quran-ref {
+  display: inline-block;
+  color: #ffd875;
+  font-weight: 800;
+  font-size: 0.94rem;
+  margin-left: 6px;
+}
+
+.hero-mission-text {
+  font-size: 0.95rem;
+  color: #d6eee2;
+  line-height: 1.65;
+  margin: 0;
+  opacity: 0.95;
+}
+
+/* Luxurious 3D Buttons */
 .hero-buttons {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
-/* Hero Chairman Showcase Card */
+.btn-hero-gold {
+  background: linear-gradient(135deg, #FFE27A 0%, #D4AF37 50%, #B3860B 100%) !important;
+  color: #072a1a !important;
+  font-weight: 800 !important;
+  font-size: 1.04rem !important;
+  padding: 12px 26px !important;
+  border-radius: 30px !important;
+  border: 1.5px solid #FFF3B8 !important;
+  box-shadow: 0 6px 24px rgba(212, 175, 55, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.25s ease !important;
+}
+
+.btn-hero-gold:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 12px 32px rgba(212, 175, 55, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.95) !important;
+  background: linear-gradient(135deg, #FFF099 0%, #E5BF42 50%, #C49514 100%) !important;
+}
+
+.btn-hero-emerald {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.08) 100%) !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  padding: 12px 24px !important;
+  border-radius: 30px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: blur(10px) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.25s ease !important;
+}
+
+.btn-hero-emerald:hover {
+  transform: translateY(-2px) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-color: #f7df94 !important;
+  color: #fff9e6 !important;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4) !important;
+}
+
+.btn-hero-white {
+  background: #FFFFFF !important;
+  color: #075B3B !important;
+  font-weight: 800 !important;
+  font-size: 1rem !important;
+  padding: 12px 24px !important;
+  border-radius: 30px !important;
+  border: 1.5px solid #d4af37 !important;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.25s ease !important;
+}
+
+.btn-hero-white:hover {
+  transform: translateY(-2px) !important;
+  background: #fbfbfb !important;
+  box-shadow: 0 10px 30px rgba(7, 91, 59, 0.35) !important;
+  color: #043622 !important;
+}
+
+/* ============================================================
+   CHAIRMAN SHOWCASE CARD (ROYAL GLASSMORPHISM)
+   ============================================================ */
 .hero-chairman-card {
   position: relative;
   z-index: 2;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 2px solid rgba(217, 184, 76, 0.65);
-  border-radius: var(--radius-lg);
-  padding: 24px 22px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.06) 100%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 2px solid rgba(245, 215, 127, 0.75);
+  border-radius: 22px;
+  padding: 30px 24px;
   text-align: center;
-  width: 320px;
-  min-width: 290px;
+  width: 335px;
+  min-width: 295px;
   flex-shrink: 0;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 
+    0 22px 55px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    0 0 40px rgba(212, 175, 55, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .hero-chairman-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 40px rgba(217, 184, 76, 0.28);
-  border-color: var(--accent-gold);
+  transform: translateY(-6px);
+  border-color: #FFE27A;
+  box-shadow: 
+    0 28px 65px rgba(0, 0, 0, 0.6),
+    0 0 50px rgba(245, 215, 127, 0.45);
 }
 
 .hero-chairman-badge {
   display: inline-block;
-  background: rgba(217, 184, 76, 0.22);
-  border: 1px solid var(--accent-gold);
-  color: var(--accent-gold);
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 3px 14px;
+  background: linear-gradient(90deg, #D4AF37 0%, #F7DF94 100%);
+  color: #032014;
+  font-size: 0.86rem;
+  font-weight: 800;
+  padding: 4px 20px;
   border-radius: 20px;
-  margin-bottom: 14px;
-  letter-spacing: 0.3px;
+  margin-bottom: 18px;
+  letter-spacing: 0.4px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+  border: 1px solid #FFF3B8;
 }
 
 .hero-chairman-photo-wrap {
   position: relative;
-  width: 140px;
-  height: 140px;
-  margin: 0 auto 14px;
+  width: 152px;
+  height: 152px;
+  margin: 0 auto 16px;
   border-radius: 50%;
-  border: 4px solid var(--accent-gold);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  background: #E8F5EC;
-  overflow: visible;
+  border: 4px solid #D4AF37;
+  padding: 3px;
+  background: linear-gradient(135deg, #F7DF94, #B3860B);
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    0 0 30px rgba(212, 175, 55, 0.5);
 }
 
 .hero-chairman-img {
@@ -491,70 +686,82 @@ body {
   border-radius: 50%;
   object-fit: cover;
   display: block;
+  background: #ffffff;
 }
 
 .hero-chairman-verified {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 28px;
-  height: 28px;
-  background: #2E7D32;
+  bottom: 5px;
+  right: 5px;
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #10B981, #059669);
   border: 2.5px solid #ffffff;
   border-radius: 50%;
   color: #ffffff;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .hero-chairman-name {
-  font-size: 1.25rem;
+  font-size: 1.38rem;
   font-weight: 800;
   color: #ffffff;
   margin: 0 0 6px;
   line-height: 1.3;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 .hero-chairman-desig {
-  font-size: 0.88rem;
-  color: #C3E2D2;
-  line-height: 1.4;
-  margin-bottom: 12px;
+  font-size: 0.92rem;
+  color: #d1fae5;
+  line-height: 1.45;
+  margin-bottom: 16px;
 }
 
 .hero-chairman-contact a {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(212, 175, 55, 0.15) 100%);
+  color: #FFF2C6;
   text-decoration: none;
-  font-size: 0.88rem;
+  font-size: 0.94rem;
   font-weight: 700;
-  padding: 5px 14px;
+  padding: 7px 20px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.2s ease;
+  border: 1.5px solid #D4AF37;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .hero-chairman-contact a:hover {
-  background: var(--accent-gold);
-  color: #053B26;
-  border-color: var(--accent-gold);
+  background: linear-gradient(135deg, #FFE27A, #D4AF37);
+  color: #032014;
+  border-color: #FFF3B8;
+  transform: scale(1.05);
+  box-shadow: 0 8px 22px rgba(212, 175, 55, 0.5);
 }
 
 .hero-chairman-quote {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(217, 184, 76, 0.4);
-  font-size: 0.82rem;
-  color: #F4E8C1;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(245, 215, 127, 0.45);
+  font-size: 0.88rem;
+  color: #FFF3CC;
   font-style: italic;
-  line-height: 1.4;
+  line-height: 1.55;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.quote-symbol {
+  color: #F7DF94;
+  font-size: 1.1rem;
+  font-style: normal;
 }
 
 .btn {
@@ -2227,28 +2434,53 @@ textarea.form-control {
 
   /* 4. Hero Section */
   .hero-section {
-    padding: 24px 16px;
-    gap: 22px;
+    flex-direction: column;
+    padding: 26px 16px;
+    gap: 24px;
     border-radius: var(--radius-md);
     margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .hero-content {
+    max-width: 100%;
   }
 
   .hero-tag {
-    font-size: 0.8rem;
-    padding: 3px 10px;
-    margin-bottom: 10px;
-  }
-
-  .hero-title {
-    font-size: 1.45rem;
-    line-height: 1.35;
+    font-size: 0.82rem;
+    padding: 5px 14px;
     margin-bottom: 12px;
   }
 
-  .hero-subtitle {
-    font-size: 0.92rem;
-    line-height: 1.6;
+  .hero-title {
+    font-size: 1.65rem;
+    line-height: 1.3;
+    margin-bottom: 10px;
+  }
+
+  .hero-location-badge {
+    font-size: 1.02rem;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .hero-quran-box {
+    flex-direction: column;
+    padding: 14px 14px;
+    text-align: left;
+    gap: 10px;
     margin-bottom: 20px;
+  }
+
+  .hero-quran-ayat {
+    font-size: 0.96rem;
+    line-height: 1.65;
+  }
+
+  .hero-mission-text {
+    font-size: 0.88rem;
+    line-height: 1.6;
   }
 
   .hero-buttons {
@@ -2257,36 +2489,40 @@ textarea.form-control {
     gap: 10px;
   }
 
-  .hero-buttons .btn {
-    width: 100%;
-    justify-content: center;
-    padding: 12px 16px;
-    font-size: 0.96rem;
+  .hero-buttons button,
+  .hero-buttons .btn,
+  .btn-hero-gold,
+  .btn-hero-emerald,
+  .btn-hero-white {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 12px 16px !important;
+    font-size: 0.96rem !important;
   }
 
   .hero-chairman-card {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    padding: 18px 14px;
+    padding: 22px 16px;
     margin: 0 auto;
     box-sizing: border-box;
   }
 
   .hero-chairman-photo-wrap {
-    width: 110px;
-    height: 110px;
-    margin-bottom: 10px;
+    width: 120px;
+    height: 120px;
+    margin-bottom: 12px;
   }
 
   .hero-chairman-name {
-    font-size: 1.15rem;
+    font-size: 1.22rem;
   }
 
   .hero-chairman-contact a {
     width: 100%;
     justify-content: center;
-    padding: 8px 12px;
+    padding: 9px 14px;
   }
 
   /* 5. Statistics Grid */
