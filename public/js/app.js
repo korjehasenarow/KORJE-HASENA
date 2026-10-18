@@ -657,14 +657,9 @@ const App = {
             </div>
             <div class="form-group">
               <label>অনুদানের খাত / তহবিল <span class="required">*</span></label>
-              <select name="fund_id" class="form-control" required>
-                ${(this.state.funds && this.state.funds.length > 0) ? this.state.funds.map(f => `<option value="${f.id}" ${data.fund_id == f.id ? 'selected' : ''}>${f.name_bn}</option>`).join('') : `
-                  <option value="1">সাধারণ অনুদান তহবিল</option>
-                  <option value="2">সুদমুক্ত ধার ঘূর্ণায়মান তহবিল</option>
-                  <option value="3">চিকিৎসা সহায়তা তহবিল</option>
-                  <option value="4">শিক্ষা সহায়তা তহবিল</option>
-                  <option value="5">জরুরি দুর্যোগ সহায়তা তহবিল</option>
-                `}
+              <select name="fund_id" class="form-control" required style="font-weight: 600;">
+                <option value="1" ${(data.fund_id == 1 || !data.fund_id) ? 'selected' : ''}>🔄 কর্জে হাসানা ঘূর্ণায়মান তহবিল (সুদমুক্ত ঋণের সম্পূর্ণ ফেরতযোগ্য মূলধন)</option>
+                <option value="2" ${data.fund_id == 2 ? 'selected' : ''}>🌾 জরুরি ও এককালীন সহায়তা তহবিল (শীতবস্ত্র, খাদ্য, চিকিৎসা ও মানবিক ত্রাণ - অ-ফেরতযোগ্য)</option>
               </select>
             </div>
             <div class="form-group">
@@ -979,7 +974,7 @@ const App = {
     } else if (type === 'welfare_grant') {
       const isEdit = !!data.id;
       modalTitle.textContent = isEdit ? '✏️ ত্রাণ / এককালীন সহায়তার তথ্য সম্পাদন' : '🌾 নতুন ত্রাণ ও এককালীন সহায়তা প্রদান';
-      const defaultFundId = data.fund_id || 5; // Emergency Fund default
+      const defaultFundId = data.fund_id || 2; // Emergency Relief Fund (Fund 2) default
       const defaultAccId = data.account_id || 1; // Cash default
       const defaultDate = data.date || getDhakaDateStr();
 
@@ -1404,6 +1399,11 @@ const App = {
   },
 
   openDonationForDonor(donorId) {
+    if (!this.state.user) {
+      this.showNotification('অনুদানের হিসাব শুধুমাত্র অনুমোদিত এডমিন রেকর্ড করতে পারেন। অনুগ্রহ করে এডমিন হিসেবে লগইন করুন।', 'warning');
+      this.openLoginModal();
+      return;
+    }
     const donor = (this.state.donors || []).find(d => String(d.id) === String(donorId));
     if (!donor) return;
     this.openModal('donation', {
@@ -2986,7 +2986,6 @@ const App = {
 
     try {
       const res = await API.recordDonation(data);
-      alert(`অনুদান রেকর্ড সম্পন্ন! রসিদ নম্বর: ${res.receiptNumber}`);
       this.closeModal();
       await this.loadInitialData();
 
@@ -3001,6 +3000,9 @@ const App = {
           await this.navigateAdmin('donors');
         }
       }
+
+      // Automatically pop up the official Digital Money Receipt Modal with WhatsApp & Print buttons!
+      this.showDonationReceiptModal(res.receipt || res.donationId || res.receiptNumber);
     } catch (err) {
       alert(`সমস্যা হয়েছে: ${err.message}`);
     } finally {
@@ -3110,12 +3112,17 @@ const App = {
   async verifyBkashSubmissionAction(id) {
     if (!confirm('আপনি কি নিশ্চিত যে এই TrxID যাচাই করে অ্যাকাউন্টে ক্রেডিট করতে চান?')) return;
     try {
-      await API.verifyBkashSubmission(id, {
+      const res = await API.verifyBkashSubmission(id, {
         user_id: this.state.user?.id,
         user_name: this.state.user?.full_name_bn
       });
-      alert('বিকাশ পেমেন্ট যাচাই করা হয়েছে এবং অনুদান রসিদ তৈরি হয়েছে!');
-      this.navigateAdmin('bkash');
+      await this.loadInitialData();
+      await this.navigateAdmin('bkash');
+      if (res && (res.receipt || res.donationId)) {
+        this.showDonationReceiptModal(res.receipt || res.donationId);
+      } else {
+        alert('বিকাশ পেমেন্ট যাচাই করা হয়েছে এবং অনুদান রসিদ তৈরি হয়েছে!');
+      }
     } catch (err) {
       alert(`যাচাই ব্যর্থ: ${err.message}`);
     }
@@ -3205,7 +3212,7 @@ const App = {
           <div class="form-group">
             <label>তহবিলের উৎস</label>
             <select name="fund_id" class="form-control" required>
-              <option value="2">সুদমুক্ত ধার ঘূর্ণায়মান তহবিল</option>
+              <option value="1">🔄 কর্জে হাসানা ঘূর্ণায়মান তহবিল (সুদমুক্ত ঋণ)</option>
             </select>
           </div>
         </div>
@@ -3250,6 +3257,218 @@ const App = {
     } catch (err) {
       alert(`বিতরণ ব্যর্থ: ${err.message}`);
     }
+  },
+
+  // -------------------------------------------------------------
+  // AUTOMATIC DIGITAL MONEY RECEIPT MODAL & WHATSAPP SHARING
+  // -------------------------------------------------------------
+  async showDonationReceiptModal(receiptOrId) {
+    let receipt = null;
+    if (typeof receiptOrId === 'object' && receiptOrId !== null && (receiptOrId.receipt_number || receiptOrId.receiptNumber)) {
+      receipt = receiptOrId;
+      if (!receipt.receipt_number && receipt.receiptNumber) receipt.receipt_number = receipt.receiptNumber;
+    } else {
+      try {
+        const res = await API.request('/api/donations/' + receiptOrId + '/receipt');
+        if (res && res.success) receipt = res.data;
+      } catch (e) {}
+      if (!receipt && this.state.donations) {
+        const found = this.state.donations.find(d => d.id === receiptOrId || d.receipt_number === receiptOrId);
+        if (found) receipt = found;
+      }
+    }
+
+    if (!receipt) {
+      alert('রসিদের তথ্য পাওয়া যায়নি।');
+      return;
+    }
+
+    const org = this.state.org || receipt.organization || {
+      name_bn: 'কর্জে হাসানা ফাউন্ডেশন',
+      chairman_name: 'MD SHAH ALAM',
+      phone: '01966442769',
+      location: 'রৌমারী, কুড়িগ্রাম'
+    };
+
+    const isRevolving = receipt.fund_id === 1 || receipt.fund_code === 'KARJE_HASENA' || receipt.is_revolving;
+    const amountInWords = receipt.amount_in_words || `${bnNum(receipt.amount)} টাকা মাত্র`;
+    const dateFormatted = receipt.date || getDhakaDateStr();
+
+    // Generate WhatsApp text
+    const cleanPhone = (receipt.donor_mobile || '').replace(/[^0-9]/g, '');
+    const waPhone = cleanPhone.startsWith('01') ? ('88' + cleanPhone) : cleanPhone;
+    const waMessage = receipt.whatsapp_message || `আসসালামু আলাইকুম ওয়া রাহমাতুল্লাহ,
+সম্মানিত ${receipt.donor_name},
+
+কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম-এ আপনার মহতী অনুদানটি সফলভাবে গৃহীত হয়েছে।
+
+🧾 ডিজিটাল মানি রিসিট নং: ${receipt.receipt_number}
+📅 সংগ্রহের তারিখ: ${dateFormatted}
+💰 অনুদানের পরিমাণ: ৳ ${bnNum(receipt.amount)} (${amountInWords})
+📂 তহবিলের খাত: ${receipt.fund_name || (isRevolving ? 'কর্জে হাসানা ঘূর্ণায়মান তহবিল' : 'জরুরি ও এককালীন সহায়তা তহবিল')}
+💳 জমার মাধ্যম: ${receipt.payment_method || 'নগদ'} ${receipt.transaction_reference ? `(TrxID: ${receipt.transaction_reference})` : ''}
+🟢 স্ট্যাটাস: নিশ্চিত ও সংরক্ষিত ✓
+
+মহান আল্লাহ তাআলা আপনার এই দানকে কবুল করুন এবং উভয় জাহানে উত্তম প্রতিদান দান করুন। আমিন।
+
+- প্রতিষ্ঠাতা চেয়ারম্যান: ${org.chairman_name || 'MD SHAH ALAM'}
+${org.name_bn || 'কর্জে হাসানা ফাউন্ডেশন'}, রৌমারী, কুড়িগ্রাম
+📞 হেল্পলাইন: ${org.phone || '01966442769'}`;
+
+    // Verification QR Code URL
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent('https://korje-hasena.onrender.com/#receipt-' + receipt.receipt_number)}`;
+
+    const receiptHtml = `
+      <div id="printableReceiptArea" style="background: #fff; padding: 22px; border: 2px solid #075B3B; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); font-family: var(--font-bn); color: #222;">
+        
+        <!-- Official Watermark & Header -->
+        <div style="border-bottom: 2px solid #075B3B; padding-bottom: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="/assets/logo.png" alt="লোগো" style="width: 55px; height: 55px; object-fit: contain; border-radius: 8px; border: 1.5px solid #D9B84C;" onerror="this.style.display='none'">
+            <div>
+              <h2 style="margin: 0; color: #075B3B; font-size: 1.35rem; font-weight: 800;">${org.name_bn || 'কর্জে হাসানা ফাউন্ডেশন'}</h2>
+              <div style="font-size: 0.8rem; color: #855300; font-weight: 600;">স্বচ্ছতা ও মানবতার কল্যাণে সুদমুক্ত সহযোগিতা • রৌমারী, কুড়িগ্রাম</div>
+              <div style="font-size: 0.76rem; color: #666;">কার্যালয়: লাইফ কেয়ার হাসপাতাল, রৌমারী | হেল্পলাইন: ${org.phone || '০১৯৬৬-৪৪২৭৬৯'}</div>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <span style="background: #075B3B; color: #D9B84C; font-weight: 800; font-size: 0.82rem; padding: 4px 12px; border-radius: 20px; display: inline-block; letter-spacing: 0.5px;">
+              ডিজিটাল মানি রিসিট
+            </span>
+            <div style="margin-top: 5px; font-family: var(--font-en); font-weight: 700; color: #333; font-size: 0.95rem;">
+              নং: ${receipt.receipt_number}
+            </div>
+          </div>
+        </div>
+
+        <!-- Receipt Metadata Bar -->
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; background: #F4FAF6; border: 1px solid #C8E6C9; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.86rem; gap: 8px;">
+          <div><strong>তারিখ:</strong> ${dateFormatted}</div>
+          <div><strong>পেমেন্ট মাধ্যম:</strong> ${receipt.payment_method || 'নগদ'} ${receipt.transaction_reference ? `(${receipt.transaction_reference})` : ''}</div>
+          <div><strong>স্ট্যাটাস:</strong> <span style="color: #1B5E20; font-weight: 700;">🟢 নিশ্চিত ও জমা গৃহীত ✓</span></div>
+        </div>
+
+        <!-- Donor Information Box -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 0.9rem;">
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 8px 0; width: 25%; color: #666;">সম্মানিত দাতার নাম:</td>
+            <td style="padding: 8px 0; font-weight: 800; font-size: 1.05rem; color: #075B3B;">${receipt.donor_name}</td>
+            <td style="padding: 8px 0; width: 20%; color: #666;">মোবাইল নম্বর:</td>
+            <td style="padding: 8px 0; font-weight: 700;">${receipt.donor_mobile || 'N/A'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666;">তহবিলের খাত:</td>
+            <td colspan="3" style="padding: 8px 0;">
+              <span style="background: ${isRevolving ? '#E8F5EC' : '#FFF9C4'}; color: ${isRevolving ? '#1B5E20' : '#E65100'}; border: 1px solid ${isRevolving ? '#81C784' : '#FFE082'}; padding: 4px 12px; border-radius: 12px; font-weight: 700; font-size: 0.84rem;">
+                ${isRevolving ? '🔄 কর্জে হাসানা ঘূর্ণায়মান তহবিল (সুদমুক্ত ঋণের সম্পূর্ণ ফেরতযোগ্য মূলধন)' : '🌾 জরুরি ও এককালীন সহায়তা তহবিল (শীতবস্ত্র, খাদ্য, চিকিৎসা ও ত্রাণ - অ-ফেরতযোগ্য)'}
+              </span>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Amount Box (Center Highlight) -->
+        <div style="background: linear-gradient(135deg, #075B3B, #0D7C52); color: white; border-radius: 10px; padding: 14px; text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 0.82rem; color: #D9B84C; font-weight: 600;">প্রাপ্ত অনুদানের পরিমাণ</div>
+          <div style="font-size: 2.1rem; font-weight: 900; color: #fff; margin: 2px 0;">৳ ${bnNum(receipt.amount)}</div>
+          <div style="font-size: 0.92rem; color: #E8F5EC; font-weight: 600;">কথায়: ${amountInWords}</div>
+        </div>
+
+        <!-- QR Code & Signatures -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px dashed #ccc; flex-wrap: wrap; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="${qrUrl}" alt="ভেরিফিকেশন কিউআর কোড" style="width: 70px; height: 70px; border: 1px solid #ddd; border-radius: 6px;">
+            <div style="font-size: 0.74rem; color: #666; line-height: 1.4;">
+              <div>📱 মোবাইল ক্যামেরা দিয়ে স্ক্যান করে</div>
+              <div>রসিদের সত্যতা অনলাইনে যাচাই করুন।</div>
+              <div style="color: #075B3B; font-weight: 700; margin-top: 2px;">✓ ডিজিটাল অডিট ভেরিফাইড</div>
+            </div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-family: 'Brush Script MT', cursive, sans-serif; font-size: 1.15rem; color: #075B3B; font-weight: bold; margin-bottom: 2px;">MD SHAH ALAM</div>
+            <div style="border-top: 1.5px solid #333; padding-top: 3px; font-weight: 700; font-size: 0.82rem;">
+              প্রতিষ্ঠাতা চেয়ারম্যান
+            </div>
+            <div style="font-size: 0.72rem; color: #555;">কর্জে হাসানা ফাউন্ডেশন</div>
+          </div>
+        </div>
+
+        <!-- Prayer Note -->
+        <div style="margin-top: 14px; text-align: center; font-size: 0.84rem; color: #075B3B; font-weight: 600; background: #FAF5E4; padding: 6px 12px; border-radius: 6px; border: 1px solid #FFE082;">
+          “মহান আল্লাহ তায়ালা আপনার এই দানকে কবুল করুন এবং উভয় জাহানে উত্তম প্রতিদান দান করুন। আমিন।”
+        </div>
+      </div>
+
+      <!-- Action Buttons Toolbar -->
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-primary" onclick="App.sendReceiptToWhatsApp('${receipt.donor_mobile || ''}', \`${encodeURIComponent(waMessage)}\`)" style="background: #25D366; border-color: #25D366; font-weight: 700; display: flex; align-items: center; gap: 6px; font-size: 0.92rem; padding: 10px 18px;">
+          <span style="font-size: 1.15rem;">💬</span> WhatsApp-এ সরাসরি পাঠান
+        </button>
+        <button type="button" class="btn btn-gold" onclick="App.printReceiptElement('printableReceiptArea')" style="font-weight: 700; display: flex; align-items: center; gap: 6px; font-size: 0.92rem; padding: 10px 18px;">
+          <span>🖨️</span> রসিদ প্রিন্ট / PDF
+        </button>
+        <button type="button" class="btn btn-outline-green" onclick="App.copyReceiptText(\`${encodeURIComponent(waMessage)}\`)" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+          <span>📋</span> মেসেজ কপি
+        </button>
+        <button type="button" class="btn btn-danger" onclick="App.closeModal()" style="font-weight: 600;">
+          বন্ধ করুন
+        </button>
+      </div>
+    `;
+
+    this.openModal('🧾 অফিসিয়াল ডিজিটাল মানি রিসিট', receiptHtml);
+  },
+
+  sendReceiptToWhatsApp(phone, encodedMessage) {
+    let clean = (phone || '').replace(/[^0-9]/g, '');
+    if (!clean) {
+      const inputPhone = prompt('দাতার হোয়াটসঅ্যাপ মোবাইল নম্বরটি লিখুন (যেমন: 017xxxxxxxx):');
+      if (!inputPhone) return;
+      clean = inputPhone.replace(/[^0-9]/g, '');
+    }
+    const fullPhone = clean.startsWith('01') ? ('88' + clean) : clean;
+    const url = `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodedMessage}`;
+    window.open(url, '_blank');
+  },
+
+  copyReceiptText(encodedMessage) {
+    const text = decodeURIComponent(encodedMessage);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('✓ সম্পূর্ণ ডিজিটাল রসিদ কপি হয়েছে! এখন হোয়াটসঅ্যাপ, ইমেইল বা মেসেঞ্জারে পেস্ট করতে পারেন।');
+      }).catch(() => {
+        prompt('নিচের রসিদ লেখাটি কপি করুন:', text);
+      });
+    } else {
+      prompt('নিচের রসিদ লেখাটি কপি করুন:', text);
+    }
+  },
+
+  printReceiptElement(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>মানি রিসিট - কর্জে হাসানা ফাউন্ডেশন</title>
+        <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          body { font-family: 'Hind Siliguri', sans-serif; margin: 20px; background: #fff; }
+          @media print {
+            body { margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        ${el.outerHTML}
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   },
 
   // -------------------------------------------------------------

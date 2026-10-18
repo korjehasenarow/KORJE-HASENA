@@ -128,7 +128,9 @@ const AdminViews = {
                   </td>
                   <td>
                     ${d.status === 'নিশ্চিত' ? `
-                      <button class="btn btn-sm btn-outline-green" onclick="App.printDocument('donation_receipt', '${d.id}')">🖨️ রসিদ</button>
+                      <button class="btn btn-sm btn-outline-green" onclick="App.showDonationReceiptModal('${d.id}')" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 700;">
+                        <span>🧾</span> রসিদ ও শেয়ার
+                      </button>
                     ` : `
                       <button class="btn btn-sm btn-gold" onclick="App.verifyDonationAction('${d.id}')">✓ যাচাই</button>
                     `}

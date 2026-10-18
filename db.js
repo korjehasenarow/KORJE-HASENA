@@ -614,14 +614,39 @@ function initSchema(db) {
       db.run(`
         INSERT INTO committee_members (id, name_bn, name_en, designation_bn, committee_type, mobile, email, photo_url, bio_bn, display_order, is_active, created_at) VALUES
         (1, 'জনাব মোঃ শাহ্ আলম ইসলাম', 'MD SHAH ALAM', 'প্রতিষ্ঠাতা চেয়ারম্যান ও ম্যানেজিং ডিরেক্টর, লাইফ কেয়ার হাসপাতাল রৌমারী', 'উপদেষ্টা পরিষদ', '01966442769', 'shahalal.siraz@gmail.com', '/uploads/committee/member_1_shah_alam.jpg', 'প্রতিষ্ঠাতা চেয়ারম্যান, কর্জে হাসানা ফাউন্ডেশন ও ম্যানেজিং ডিরেক্টর, লাইফ কেয়ার হাসপাতাল রৌমারী', 1, 1, datetime('now')),
-        (2, 'হযরত মাওলানা মোঃ মোকছেদ আলী', 'Mawlana Md Moksed Ali', 'প্রধান উপদেষ্টা ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা', 'উপদেষ্টা পরিষদ', '01914638313', 'moksed.ali@karjehasana.org', '/uploads/committee/member_2_moksed_ali.jpg', 'বিশিষ্ট ইসলামী শিক্ষাবিদ ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা', 2, 1, datetime('now')),
-        (3, 'জনাব মোঃ বাবুল হোসেন', 'Md Babul Hossain', 'উপদেষ্টা ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী', 'উপদেষ্টা পরিষদ', '01931649576', 'babul.hossain@karjehasana.org', '/uploads/committee/member_3_babul_hossain.jpg', 'বিশিষ্ট ব্যবসায়ী, সমাজসেবক ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী', 3, 1, datetime('now')),
+        (2, 'জনাব মোঃ বাবুল হোসেন', 'Md Babul Hossain', 'প্রধান উপদেষ্টা ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী', 'উপদেষ্টা পরিষদ', '01931649576', 'babul.hossain@karjehasana.org', '/uploads/committee/member_3_babul_hossain.jpg', 'প্রধান উপদেষ্টা, বিশিষ্ট ব্যবসায়ী, সমাজসেবক ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী', 2, 1, datetime('now')),
+        (3, 'হযরত মাওলানা মোঃ মোকছেদ আলী', 'Mawlana Md Moksed Ali', 'উপদেষ্টা ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা', 'উপদেষ্টা পরিষদ', '01914638313', 'moksed.ali@karjehasana.org', '/uploads/committee/member_2_moksed_ali.jpg', 'সম্মানিত উপদেষ্টা, বিশিষ্ট ইসলামী শিক্ষাবিদ ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা', 3, 1, datetime('now')),
         (4, 'হযরত মাওলানা মোঃ আনোয়ারুল ইসলাম', 'Mawlana Md Anwarul Islam', 'শরীয়াহ উপদেষ্টা ও প্রধান ফকিহ, কুড়িগ্রাম আলিয়া মাদ্রাসা', 'উপদেষ্টা পরিষদ', '01911086469', 'anwarul.islam@karjehasana.org', '/uploads/committee/member_4_anwarul_islam.jpg', 'বিশিষ্ট ইসলামী আইন ও শরীয়াহ বিশেষজ্ঞ, প্রধান ফকিহ, কুড়িগ্রাম আলিয়া মাদ্রাসা', 4, 1, datetime('now')),
         (5, 'জনাব মোঃ মাহবুব আলম', 'Md Mahbub Alam', 'উপদেষ্টা ও চেয়ারম্যান, রৌমারী জেনারেল হাসপাতাল এন্ড ডায়াগনস্টিক সেন্টার', 'উপদেষ্টা পরিষদ', '01915604026', 'mahbub.alam@karjehasana.org', '/uploads/committee/member_5_mahbub_alam.jpg', 'বিশিষ্ট সমাজসেবক ও চেয়ারম্যান, রৌমারী জেনারেল হাসপাতাল এন্ড ডায়াগনস্টিক সেন্টার', 5, 1, datetime('now')),
         (6, 'হাফেজ হযরত মাওলানা মোঃ রিয়াজুল ইসলাম', 'Hafez Mawlana Md Riazul Islam', 'উপদেষ্টা ও বিশিষ্ট তরুণ বক্তা', 'উপদেষ্টা পরিষদ', '01921970377', 'riazul.islam@karjehasana.org', '/uploads/committee/member_6_riazul_islam.jpg', 'জনপ্রিয় ইসলামী আলোচক ও তরুণ বক্তা', 6, 1, datetime('now')),
         (7, 'জনাব মোঃ সাইদুল ইসলাম সাইদ', 'Md Saidul Islam Said', 'উপদেষ্টা ও বিশিষ্ট সমাজসেবক', 'উপদেষ্টা পরিষদ', '01716882049', 'saidul.islam@karjehasana.org', '/uploads/committee/member_7_saidul_islam.jpg', 'বিশিষ্ট সমাজসেবক ও শুভাকাঙ্ক্ষী, রৌমারী', 7, 1, datetime('now')),
         (8, 'হাফেজ হযরত মাওলানা মোঃ মাইদুল ইসলাম', 'Hafez Mawlana Md Maidul Islam', 'উপদেষ্টা ও বিশিষ্ট তরুণ বক্তা', 'উপদেষ্টা পরিষদ', '01920114330', 'maidul.islam@karjehasana.org', '/uploads/committee/member_8_maidul_islam.jpg', 'জনপ্রিয় ইসলামী আলোচক ও তরুণ বক্তা', 8, 1, datetime('now')),
         (9, 'জনাব মোঃ আল আমিন অনিক', 'MD AL AMIN ONIK', 'উপদেষ্টা ও CEO, ঢাকা এয়ার ট্রাভেলস, রৌমারী, কুড়িগ্রাম', 'উপদেষ্টা পরিষদ', '01832630299', 'alamin.onik@karjehasana.org', '/uploads/committee/member_9_al_amin_onik.jpg', 'CEO, DHAKA AIR TRAVELS, ROWMARI, KURIGRAM', 9, 1, datetime('now'));
+      `);
+    } else {
+      // Ensure member 2 and 3 order and designations are accurately updated
+      db.run(`
+        UPDATE committee_members SET 
+          name_bn = 'জনাব মোঃ বাবুল হোসেন',
+          name_en = 'Md Babul Hossain',
+          designation_bn = 'প্রধান উপদেষ্টা ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী',
+          mobile = '01931649576',
+          email = 'babul.hossain@karjehasana.org',
+          photo_url = '/uploads/committee/member_3_babul_hossain.jpg',
+          bio_bn = 'প্রধান উপদেষ্টা, বিশিষ্ট ব্যবসায়ী, সমাজসেবক ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী',
+          display_order = 2
+        WHERE id = 2;
+
+        UPDATE committee_members SET 
+          name_bn = 'হযরত মাওলানা মোঃ মোকছেদ আলী',
+          name_en = 'Mawlana Md Moksed Ali',
+          designation_bn = 'উপদেষ্টা ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা',
+          mobile = '01914638313',
+          email = 'moksed.ali@karjehasana.org',
+          photo_url = '/uploads/committee/member_2_moksed_ali.jpg',
+          bio_bn = 'সম্মানিত উপদেষ্টা, বিশিষ্ট ইসলামী শিক্ষাবিদ ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা',
+          display_order = 3
+        WHERE id = 3;
       `);
     }
   } catch (err) {
@@ -694,18 +719,30 @@ function initSchema(db) {
     `);
   }
 
-  // Seed Funds
-  const fundCheck = db.exec('SELECT COUNT(*) as count FROM funds;');
-  const fundCount = fundCheck[0]?.values[0][0] || 0;
-  if (fundCount === 0) {
-    db.run(`
-      INSERT INTO funds (name_bn, code, is_restricted, description, opening_balance, created_at) VALUES
-      ('সাধারণ অনুদান তহবিল', 'GENERAL', 0, 'ফাউন্ডেশনের সাধারণ ও পরিচালন অনুদান', 0.00, datetime('now')),
-      ('সুদমুক্ত ধার ঘূর্ণায়মান তহবিল', 'REVOLVING_LOAN', 1, 'কর্জে হাসানা হিসেবে বিতরণের জন্য সংরক্ষিত ঘূর্ণায়মান মূলধন', 0.00, datetime('now')),
-      ('চিকিৎসা সহায়তা তহবিল', 'MEDICAL', 1, 'অসহায় রোগীদের জরুরি চিকিৎসা অনুদান', 0.00, datetime('now')),
-      ('শিক্ষা সহায়তা তহবিল', 'EDUCATION', 1, 'দরিদ্র শিক্ষার্থীদের শিক্ষা উপকরণ ও ফি সহায়তা', 0.00, datetime('now')),
-      ('জরুরি দুর্যোগ সহায়তা তহবিল', 'EMERGENCY', 1, 'বন্যা ও প্রাকৃতিক দুর্যোগে জরুরি ত্রাণ সহায়তা', 0.00, datetime('now'));
-    `);
+  // Seed Funds - Strictly Two Primary Distinct Sectors as per Foundation Charter:
+  // 1. কর্জে হাসানা ঘূর্ণায়মান তহবিল (Revolving Loan Capital - 100% Refundable)
+  // 2. জরুরি ও এককালীন সহায়তা তহবিল (One-time Relief & Aid: blankets, food, medical - Non-refundable)
+  try {
+    const fundCheck = db.exec('SELECT COUNT(*) as count FROM funds;');
+    const fundCount = fundCheck[0]?.values[0][0] || 0;
+    if (fundCount === 0) {
+      db.run(`
+        INSERT INTO funds (id, name_bn, code, is_restricted, description, opening_balance, created_at) VALUES
+        (1, 'কর্জে হাসানা ঘূর্ণায়মান তহবিল', 'KARJE_HASENA', 1, 'সুদমুক্ত ঋণ হিসেবে বিতরণ ও ফেরত নেওয়ার ঘূর্ণায়মান মূলধন (ফেরতযোগ্য)', 0.00, datetime('now')),
+        (2, 'জরুরি ও এককালীন সহায়তা তহবিল', 'EMERGENCY_RELIEF', 1, 'শীতবস্ত্র/কম্বল বিতরণ, বন্যার খাদ্য ত্রাণ, চিকিৎসা অনুদান ও মানবিক সহায়তা (অ-ফেরতযোগ্য)', 0.00, datetime('now'));
+      `);
+    } else {
+      // Ensure existing funds are aligned to the two distinct sectors
+      db.run(`
+        UPDATE funds SET name_bn = 'কর্জে হাসানা ঘূর্ণায়মান তহবিল', code = 'KARJE_HASENA', description = 'সুদমুক্ত ঋণ হিসেবে বিতরণ ও ফেরত নেওয়ার ঘূর্ণায়মান মূলধন (ফেরতযোগ্য)' WHERE id = 1;
+        UPDATE funds SET name_bn = 'জরুরি ও এককালীন সহায়তা তহবিল', code = 'EMERGENCY_RELIEF', description = 'শীতবস্ত্র/কম্বল বিতরণ, বন্যার খাদ্য ত্রাণ, চিকিৎসা অনুদান ও মানবিক সহায়তা (অ-ফেরতযোগ্য)' WHERE id = 2;
+        UPDATE welfare_grants SET fund_id = 2 WHERE fund_id != 2;
+        UPDATE loans SET fund_id = 1 WHERE fund_id != 1;
+        DELETE FROM funds WHERE id > 2;
+      `);
+    }
+  } catch (err) {
+    console.error('Error seeding/migrating funds:', err);
   }
 }
 

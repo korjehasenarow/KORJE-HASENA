@@ -22,9 +22,28 @@ const COMMITTEE_ROLES_DATA = {
   },
   2: {
     id: 2,
+    name_bn: 'জনাব মোঃ বাবুল হোসেন',
+    name_en: 'Md Babul Hossain',
+    designation_bn: 'প্রধান উপদেষ্টা ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী',
+    proposed_role: 'প্রশাসনিক ব্যবস্থাপনা ও জনকল্যাণমূলক কার্যক্রমের দিকনির্দেশনা ও সার্বিক পরামর্শ।',
+    duties: [
+      'ফাউন্ডেশনের প্রশাসনিক কার্যক্রম আরও সুশৃঙ্খল ও গতিশীল করার জন্য দিকনির্দেশনা প্রদান।',
+      'আবেদন গ্রহণ, আবেদন যাচাই, অনুমোদন ও ঋণ বিতরণের প্রক্রিয়া সহজ ও নিয়মতান্ত্রিক করার বিষয়ে মতামত দেওয়া।',
+      'অসুস্থতা, চিকিৎসা ব্যয়, জরুরি পারিবারিক প্রয়োজন ও ক্ষুদ্র ব্যবসার মতো ক্ষেত্রগুলোতে আর্থিক সহায়তার অগ্রাধিকার নির্ধারণে পরামর্শ দেওয়া।',
+      'সেবাগ্রহীতাদের সঙ্গে সম্মানজনক আচরণ ও ব্যক্তিগত তথ্যের গোপনীয়তা বজায় রাখার বিষয়ে দিকনির্দেশনা দেওয়া।',
+      'প্রশাসনিক দুর্বলতা ও সেবাপ্রদানে সমস্যাগুলো চিহ্নিত করে উন্নয়নের সুপারিশ করা।',
+      'প্রয়োজনে স্থানীয় স্বাস্থ্যসেবা ও সামাজিক কল্যাণ প্রতিষ্ঠানের সঙ্গে যোগাযোগে সহায়তা করা।'
+    ],
+    special_policy: null,
+    mobile: '01931649576',
+    committee_type: 'উপদেষ্টা পরিষদ',
+    photo_url: '/uploads/committee/member_3_babul_hossain.jpg'
+  },
+  3: {
+    id: 3,
     name_bn: 'হযরত মাওলানা মোঃ মোকছেদ আলী',
     name_en: 'Mawlana Md Moksed Ali',
-    designation_bn: 'প্রধান উপদেষ্টা ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা',
+    designation_bn: 'উপদেষ্টা ও অধ্যক্ষ, রৌমারী কেরামতিয়া আদর্শ ফাযিল মাদ্রাসা',
     proposed_role: 'নীতিগত পরামর্শ, ইসলামী মূল্যবোধ ও প্রাতিষ্ঠানিক উন্নয়ন।',
     duties: [
       'ফাউন্ডেশনের লক্ষ্য ও উদ্দেশ্যের সঙ্গে সামঞ্জস্য রেখে নীতিগত পরামর্শ প্রদান।',
@@ -38,25 +57,6 @@ const COMMITTEE_ROLES_DATA = {
     mobile: '01914638313',
     committee_type: 'উপদেষ্টা পরিষদ',
     photo_url: '/uploads/committee/member_2_moksed_ali.jpg'
-  },
-  3: {
-    id: 3,
-    name_bn: 'জনাব মোঃ বাবুল হোসেন',
-    name_en: 'Md Babul Hossain',
-    designation_bn: 'উপদেষ্টা ও চেয়ারম্যান, লাইফ কেয়ার হাসপাতাল, রৌমারী',
-    proposed_role: 'প্রশাসনিক ব্যবস্থাপনা ও জনকল্যাণমূলক কার্যক্রমের পরামর্শ।',
-    duties: [
-      'ফাউন্ডেশনের প্রশাসনিক কার্যক্রম আরও সুশৃঙ্খল করার জন্য পরামর্শ প্রদান।',
-      'আবেদন গ্রহণ, আবেদন যাচাই, অনুমোদন ও ঋণ বিতরণের প্রক্রিয়া সহজ ও নিয়মতান্ত্রিক করার বিষয়ে মতামত দেওয়া।',
-      'অসুস্থতা, চিকিৎসা ব্যয়, জরুরি পারিবারিক প্রয়োজন ও ক্ষুদ্র ব্যবসার মতো ক্ষেত্রগুলোতে আর্থিক সহায়তার অগ্রাধিকার নির্ধারণে পরামর্শ দেওয়া।',
-      'সেবাগ্রহীতাদের সঙ্গে সম্মানজনক আচরণ ও ব্যক্তিগত তথ্যের গোপনীয়তা বজায় রাখার বিষয়ে দিকনির্দেশনা দেওয়া।',
-      'প্রশাসনিক দুর্বলতা ও সেবাপ্রদানে সমস্যাগুলো চিহ্নিত করে উন্নয়নের সুপারিশ করা।',
-      'প্রয়োজনে স্থানীয় স্বাস্থ্যসেবা ও সামাজিক কল্যাণ প্রতিষ্ঠানের সঙ্গে যোগাযোগে সহায়তা করা।'
-    ],
-    special_policy: null,
-    mobile: '01931649576',
-    committee_type: 'উপদেষ্টা পরিষদ',
-    photo_url: '/uploads/committee/member_3_babul_hossain.jpg'
   },
   4: {
     id: 4,
@@ -243,47 +243,74 @@ const Components = {
             ✓ রিয়েল-টাইম হিসাব
           </span>
         </div>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon green">👥</div>
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+          <!-- Fund 1: Karje Hasena Revolving Capital -->
+          <div class="stat-card" style="border-top: 4px solid #1565C0; background: #FAFDFE;">
+            <div class="stat-icon blue">🔄</div>
             <div class="stat-info">
-              <h4>নিবন্ধিত শুভাকাঙ্ক্ষী ও দাতা</h4>
-              <div class="stat-value">${bnNum(summary?.donorsCount || 0)} জন</div>
+              <h4>তহবিল ১: কর্জে হাসানা মূলধন</h4>
+              <div class="stat-value" style="color: #0D47A1;">৳ ${bnNum(summary?.karjeDonations != null ? summary.karjeDonations : ((summary?.donationsTotal || 0) - (summary?.emergencyDonations || 0)))}</div>
+              <div style="font-size: 0.74rem; color: #1976D2; font-weight: 600; margin-top: 3px;">সুদমুক্ত ঋণের মূলধন (১০০% ফেরতযোগ্য)</div>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon gold">💰</div>
+
+          <!-- Fund 2: Emergency Relief Fund -->
+          <div class="stat-card" style="border-top: 4px solid #E65100; background: #FFFBFA;">
+            <div class="stat-icon" style="background: #FFF3E0; color: #E65100;">🌾</div>
             <div class="stat-info">
-              <h4>মোট প্রাপ্ত অনুদান</h4>
-              <div class="stat-value">৳ ${bnNum(summary?.donationsTotal || 0)}</div>
+              <h4>তহবিল ২: এককালীন ত্রাণ তহবিল</h4>
+              <div class="stat-value" style="color: #E65100;">৳ ${bnNum(summary?.emergencyBalance ?? summary?.emergencyDonations ?? 0)}</div>
+              <div style="font-size: 0.74rem; color: #BF360C; font-weight: 600; margin-top: 3px;">শীতবস্ত্র, খাদ্য ও চিকিৎসা (অ-ফেরতযোগ্য)</div>
             </div>
           </div>
+
+          <!-- Disbursed Loans -->
           <div class="stat-card">
             <div class="stat-icon blue">🤝</div>
             <div class="stat-info">
               <h4>বিতরণকৃত সুদমুক্ত ধার</h4>
               <div class="stat-value">৳ ${bnNum(summary?.loansDisbursed || 0)}</div>
+              <div style="font-size: 0.74rem; color: #666; margin-top: 3px;">ঋণ হিসেবে বিতরণকৃত</div>
             </div>
           </div>
+
+          <!-- Repaid Principal -->
           <div class="stat-card">
-            <div class="stat-icon green">🔄</div>
+            <div class="stat-icon green">↩️</div>
             <div class="stat-info">
               <h4>ফেরতপ্রাপ্ত মূলধন</h4>
-              <div class="stat-value">৳ ${bnNum(summary?.loansRepaid || 0)}</div>
+              <div class="stat-value" style="color: #2E7D32;">৳ ${bnNum(summary?.loansRepaid || 0)}</div>
+              <div style="font-size: 0.74rem; color: #2E7D32; margin-top: 3px;">কিস্তিতে আদায়কৃত</div>
             </div>
           </div>
+
+          <!-- Distributed Relief Aid Spent -->
           <div class="stat-card" style="border-top: 3px solid #C62828;">
-            <div class="stat-icon" style="background: #FFEBEE; color: #C62828;">🌾</div>
+            <div class="stat-icon" style="background: #FFEBEE; color: #C62828;">🤲</div>
             <div class="stat-info">
-              <h4>এককালীন ত্রাণ ও সহায়তা</h4>
+              <h4>বিতরণকৃত ত্রাণ ও সহায়তা</h4>
               <div class="stat-value" style="color: #C62828;">৳ ${bnNum(summary?.totalWelfareAid || 0)}</div>
+              <div style="font-size: 0.74rem; color: #888; margin-top: 3px;">কম্বল, খাদ্য ও চিকিৎসা ব্যয়</div>
             </div>
           </div>
+
+          <!-- Beneficiaries -->
           <div class="stat-card" style="border-top: 3px solid #075B3B;">
             <div class="stat-icon green">👨‍👩‍👧‍👦</div>
             <div class="stat-info">
               <h4>উপকৃত পরিবার ও ব্যক্তি</h4>
-              <div class="stat-value" style="color: #075B3B;">${bnNum(summary?.welfareBeneficiariesCount || 0)} জন/পরিবার</div>
+              <div class="stat-value" style="color: #075B3B;">${bnNum((summary?.activeBeneficiaries || 0) + (summary?.welfareBeneficiariesCount || 0))} জন/পরিবার</div>
+              <div style="font-size: 0.74rem; color: #075B3B; margin-top: 3px;">ঋণ ও ত্রাণ গ্রহীতা</div>
+            </div>
+          </div>
+
+          <!-- Donors Count -->
+          <div class="stat-card">
+            <div class="stat-icon green">👥</div>
+            <div class="stat-info">
+              <h4>নিবন্ধিত শুভাকাঙ্ক্ষী ও দাতা</h4>
+              <div class="stat-value">${bnNum(summary?.donorsCount || 0)} জন</div>
+              <div style="font-size: 0.74rem; color: #666; margin-top: 3px;">ফাউন্ডেশনের শুভাকাঙ্ক্ষী</div>
             </div>
           </div>
         </div>
@@ -679,9 +706,11 @@ const Components = {
                     <button type="button" class="btn btn-gold btn-sm" onclick="App.navigate('donate')">
                       ❤️ তহবিলে অনুদান পাঠান
                     </button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="App.openModal('donor')">
-                      ➕ এডমিন: নতুন দাতা ও ছবি যুক্ত করুন
-                    </button>
+                    ${(typeof App !== 'undefined' && App.state && App.state.user) ? `
+                      <button type="button" class="btn btn-primary btn-sm" onclick="App.openModal('donor')">
+                        ➕ এডমিন: নতুন দাতা ও ছবি যুক্ত করুন
+                      </button>
+                    ` : ''}
                   </div>
                 </div>
               `;
@@ -721,11 +750,13 @@ const Components = {
                       </div>
                     ` : ''}
                   </div>
-                  <div>
-                    <button type="button" class="btn btn-sm btn-outline-green" style="width: 100%; margin-top: 10px; font-size: 0.8rem;" onclick="App.openDonationForDonor('${d.id}')">
-                      💵 এই দাতার অনুদান রেকর্ড ➔
-                    </button>
-                  </div>
+                  ${(typeof App !== 'undefined' && App.state && App.state.user) ? `
+                    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #d0dcd4;">
+                      <button type="button" class="btn btn-sm btn-outline-green" style="width: 100%; font-size: 0.8rem; font-weight: 600;" onclick="App.openDonationForDonor('${d.id}')">
+                        🔒 এডমিন: এই দাতার অনুদান রেকর্ড ➔
+                      </button>
+                    </div>
+                  ` : ''}
                 </div>
               `;
             }).join('');
@@ -1598,13 +1629,10 @@ const Components = {
               <input type="text" name="sender_bkash_mobile" class="form-control" placeholder="যেমন: 019XXXXXXXX">
             </div>
             <div class="form-group">
-              <label>অনুদানের খাত/উদ্দেশ্য</label>
-              <select name="fund_category" class="form-control">
-                <option value="সাধারণ অনুদান">সাধারণ অনুদান তহবিল</option>
-                <option value="সুদমুক্ত ধার ঘূর্ণায়মান মূলধন">সুদমুক্ত ধার ঘূর্ণায়মান তহবিল</option>
-                <option value="চিকিৎসা সহায়তা">চিকিৎসা সহায়তা তহবিল</option>
-                <option value="শিক্ষা সহায়তা">শিক্ষা সহায়তা তহবিল</option>
-                <option value="জরুরি দুর্যোগ সহায়তা">জরুরি দুর্যোগ সহায়তা তহবিল</option>
+              <label>অনুদানের খাত / তহবিল নির্বাচন করুন <span class="required">*</span></label>
+              <select name="fund_category" class="form-control" style="font-weight: 600;">
+                <option value="কর্জে হাসানা ঘূর্ণায়মান তহবিল">🔄 কর্জে হাসানা ঘূর্ণায়মান তহবিল (সুদমুক্ত ঋণের সম্পূর্ণ ফেরতযোগ্য মূলধন)</option>
+                <option value="জরুরি ও এককালীন সহায়তা তহবিল">🌾 জরুরি ও এককালীন সহায়তা তহবিল (শীতবস্ত্র, খাদ্য, চিকিৎসা ও মানবিক ত্রাণ - অ-ফেরতযোগ্য)</option>
               </select>
             </div>
           </div>
@@ -1846,8 +1874,8 @@ const Components = {
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div style="background: #F8FBFE; padding: 12px; border-radius: 8px; border: 1px solid #E1E8EE;">
-              <div style="font-size: 0.8rem; color: #546E7A;">মোট সংগৃহীত অনুদান মূলধন</div>
-              <div style="font-size: 1.25rem; font-weight: 700; color: #0D47A1; margin-top: 4px;">৳ ${bnNum(summary?.donationsTotal || 0)}</div>
+              <div style="font-size: 0.8rem; color: #546E7A;">মোট সংগৃহীত মূলধন অনুদান</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #0D47A1; margin-top: 4px;">৳ ${bnNum(summary?.karjeDonations != null ? summary.karjeDonations : ((summary?.donationsTotal || 0) - (summary?.emergencyDonations || 0)))}</div>
             </div>
             <div style="background: #F8FBFE; padding: 12px; border-radius: 8px; border: 1px solid #E1E8EE;">
               <div style="font-size: 0.8rem; color: #546E7A;">বিতরণকৃত সুদমুক্ত ধার</div>
@@ -1882,12 +1910,20 @@ const Components = {
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
+              <div style="font-size: 0.8rem; color: #33691E;">মোট সংগৃহীত ত্রাণ অনুদান</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #1B5E20; margin-top: 4px;">৳ ${bnNum(summary?.emergencyDonations || 0)}</div>
+            </div>
+            <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
+              <div style="font-size: 0.8rem; color: #33691E;">ত্রাণ তহবিলের বর্তমান উদ্বৃত্ত</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #2E7D32; margin-top: 4px;">৳ ${bnNum(summary?.emergencyBalance ?? summary?.emergencyDonations ?? 0)}</div>
+            </div>
+            <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
               <div style="font-size: 0.8rem; color: #33691E;">মোট এককালীন সহায়তা ব্যয়</div>
-              <div style="font-size: 1.25rem; font-weight: 700; color: #1B5E20; margin-top: 4px;">৳ ${bnNum(wData.totalAidSpent || 0)}</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #C62828; margin-top: 4px;">৳ ${bnNum(wData.totalAidSpent || summary?.totalWelfareAid || 0)}</div>
             </div>
             <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
               <div style="font-size: 0.8rem; color: #33691E;">উপকৃত পরিবার ও ব্যক্তি</div>
-              <div style="font-size: 1.25rem; font-weight: 700; color: #2E7D32; margin-top: 4px;">${bnNum(wData.totalBeneficiaries || 0)} জন</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #00796B; margin-top: 4px;">${bnNum(wData.totalBeneficiaries || summary?.welfareBeneficiariesCount || 0)} জন</div>
             </div>
             <div style="background: #F7FCF8; padding: 12px; border-radius: 8px; border: 1px solid #DCEDC8;">
               <div style="font-size: 0.8rem; color: #33691E;">বাস্তবায়িত কার্যক্রম/প্রজেক্ট</div>
@@ -3848,6 +3884,162 @@ const Components = {
         <button class="btn btn-outline-green" onclick="App.runAlertCheck()">⚡ অ্যালার্ট রিফ্রেশ</button>
       </div>
 
+      <!-- ========================================================= -->
+      <!-- TWO DISTINCT CORE SECTORS (দুটো আলাদা কেন্দ্রীয় তহবিল বণ্টন) -->
+      <!-- ১. কর্জে হাসানা ঘূর্ণায়মান তহবিল (Revolving Loan Capital - Refundable) -->
+      <!-- ২. জরুরি ও এককালীন সহায়তা তহবিল (Relief & Grants - Non-Refundable) -->
+      <!-- ========================================================= -->
+      <div class="fund-sectors-hero" style="margin-bottom: 24px;">
+        <div style="background: linear-gradient(135deg, #075B3B, #06452E); color: white; padding: 12px 18px; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.4rem;">⚖️</span>
+            <div>
+              <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #fff;">দ্বিমুখী কেন্দ্রীয় হিসাব ও তহবিল বণ্টন</h3>
+              <div style="font-size: 0.8rem; color: #D9B84C;">১. কর্জে হাসানা ঘূর্ণায়মান মূলধন (ফেরতযোগ্য) ও ২. জরুরি মানবিক ত্রাণ (এককালীন/অ-ফেরতযোগ্য) এর পৃথক হিসাব</div>
+            </div>
+          </div>
+          <span class="badge" style="background: #D9B84C; color: #06452E; font-weight: 700; padding: 5px 12px; border-radius: 20px; font-size: 0.82rem;">
+            মোট সংগৃহীত অনুদান: ৳ ${bnNum(stats.totalDonations)}
+          </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; background: #fff; padding: 18px; border: 1.5px solid #075B3B; border-top: none; border-radius: 0 0 12px 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06);">
+          
+          <!-- SECTOR 1 CARD: কর্জে হাসানা ঘূর্ণায়মান তহবিল -->
+          <div style="background: linear-gradient(145deg, #F4FAF6, #E8F5EC); border: 2px solid #075B3B; border-radius: 10px; padding: 16px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+              <div>
+                <span style="background: #075B3B; color: #fff; padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 700; display: inline-block; margin-bottom: 6px;">
+                  সেক্টর ১ • ঘূর্ণায়মান মূলধন
+                </span>
+                <h3 style="margin: 0; font-size: 1.18rem; font-weight: 800; color: #075B3B;">🔄 কর্জে হাসানা ঘূর্ণায়মান তহবিল</h3>
+              </div>
+              <span style="background: #C8E6C9; color: #1B5E20; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                ✓ ১০০% ফেরতযোগ্য
+              </span>
+            </div>
+
+            <div style="background: #fff; border: 1px solid #C8E6C9; border-radius: 8px; padding: 12px; margin-bottom: 14px; text-align: center;">
+              <div style="font-size: 0.82rem; color: #555; font-weight: 600;">মোট সংগৃহীত ঘূর্ণায়মান মূলধন</div>
+              <div style="font-size: 1.8rem; font-weight: 800; color: #075B3B; margin: 3px 0;">৳ ${bnNum(stats.karjeSector?.totalCapital || 0)}</div>
+              <div style="font-size: 0.78rem; color: #666;">(এই মূলধন অভাবগ্রস্তদের ধার দেওয়া হয় এবং ফেরত আসার পর পুনরায় অন্যকে দেওয়া হয়)</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+              <div style="background: #fff; border: 1px solid #E0E0E0; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.76rem; color: #666;">💼 নতুন ধার দেওয়ার জন্য ক্যাশ:</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #1B5E20; margin-top: 2px;">
+                  ৳ ${bnNum(stats.karjeSector?.availableCash || 0)}
+                </div>
+              </div>
+              <div style="background: #fff; border: 1px solid #FFE082; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.76rem; color: #855300;">⏳ ফিল্ডে বকেয়া ধার (পাওনা):</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #B78103; margin-top: 2px;">
+                  ৳ ${bnNum(stats.karjeSector?.outstandingLoans || 0)}
+                </div>
+              </div>
+              <div style="background: #fff; border: 1px solid #E0E0E0; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.76rem; color: #666;">🤝 মোট বিতরণকৃত ধার:</div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: #333; margin-top: 2px;">
+                  ৳ ${bnNum(stats.karjeSector?.totalDisbursed || 0)}
+                </div>
+              </div>
+              <div style="background: #fff; border: 1px solid #C8E6C9; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.76rem; color: #1B5E20;">🔄 এ পর্যন্ত আদায়কৃত কিস্তি:</div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: #1B5E20; margin-top: 2px;">
+                  ৳ ${bnNum(stats.karjeSector?.totalRepaid || 0)}
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-sm btn-primary" onclick="App.navigateAdmin('disbursement')" style="flex: 1; font-size: 0.82rem; font-weight: 700;">
+                🤝 সুদমুক্ত ধার বিতরণ
+              </button>
+              <button class="btn btn-sm btn-gold" onclick="App.openModal('repayment')" style="flex: 1; font-size: 0.82rem; font-weight: 700;">
+                🔄 কিস্তি/ফেরত গ্রহণ
+              </button>
+            </div>
+          </div>
+
+          <!-- SECTOR 2 CARD: জরুরি ও এককালীন সহায়তা তহবিল -->
+          <div style="background: linear-gradient(145deg, #FFFDE7, #FFF9C4); border: 2px solid #F57F17; border-radius: 10px; padding: 16px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+              <div>
+                <span style="background: #E65100; color: #fff; padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 700; display: inline-block; margin-bottom: 6px;">
+                  সেক্টর ২ • এককালীন মানবিক ত্রাণ
+                </span>
+                <h3 style="margin: 0; font-size: 1.18rem; font-weight: 800; color: #B78103;">🌾 জরুরি ও এককালীন সহায়তা তহবিল</h3>
+              </div>
+              <span style="background: #FFECB3; color: #E65100; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                ✕ অ-ফেরতযোগ্য (এককালীন)
+              </span>
+            </div>
+
+            <div style="background: #fff; border: 1px solid #FFE082; border-radius: 8px; padding: 12px; margin-bottom: 14px; text-align: center;">
+              <div style="font-size: 0.82rem; color: #555; font-weight: 600;">সহায়তা প্রদানের জন্য প্রস্তুত অবশিষ্ট জমা</div>
+              <div style="font-size: 1.8rem; font-weight: 800; color: #E65100; margin: 3px 0;">৳ ${bnNum(stats.emergencySector?.availableBalance || 0)}</div>
+              <div style="font-size: 0.78rem; color: #666;">(শীতকালীন কম্বল, বন্যায় খাদ্য বা চিকিৎসায় ব্যয় হলে তা এককালীন হিসেবে অপূরণীয়)</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+              <div style="background: #fff; border: 1px solid #E0E0E0; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.76rem; color: #666;">💰 মোট সংগৃহীত জরুরি অনুদান:</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #333; margin-top: 2px;">
+                  ৳ ${bnNum(stats.emergencySector?.totalDonations || 0)}
+                </div>
+              </div>
+              <div style="background: #fff; border: 1px solid #FFCCBC; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.76rem; color: #BF360C;">🤲 মোট ব্যয়িত মানবিক ত্রাণ:</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #C62828; margin-top: 2px;">
+                  ৳ ${bnNum(stats.emergencySector?.totalSpent || 0)}
+                </div>
+              </div>
+              <div style="background: #fff; border: 1px solid #E0E0E0; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.76rem; color: #666;">👨‍👩‍👧‍👦 মোট উপকৃত পরিবার/ব্যক্তি:</div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: #075B3B; margin-top: 2px;">
+                  ${bnNum(stats.emergencySector?.beneficiariesCount || 0)} জন
+                </div>
+              </div>
+              <div style="background: #fff; border: 1px solid #E0E0E0; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.76rem; color: #666;">📋 পরিচালিত ত্রাণ কর্মসূচি:</div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: #333; margin-top: 2px;">
+                  ${bnNum(stats.emergencySector?.activitiesCount || 0)} টি
+                </div>
+              </div>
+            </div>
+
+            <!-- Category Breakdown Pills for Emergency/Welfare Aid -->
+            ${(stats.emergencySector?.categoryBreakdown && stats.emergencySector.categoryBreakdown.length > 0) ? `
+              <div style="background: #fff; border: 1px dashed #F57F17; border-radius: 8px; padding: 8px 12px; margin-bottom: 14px;">
+                <div style="font-size: 0.76rem; font-weight: 700; color: #E65100; margin-bottom: 4px;">📊 খাতভিত্তিক এককালীন ব্যয়ের হিসাব:</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  ${stats.emergencySector.categoryBreakdown.map(c => `
+                    <span style="background: #FFF8E1; border: 1px solid #FFE082; padding: 2px 8px; border-radius: 12px; font-size: 0.74rem; color: #795548;">
+                      ${c.category}: <strong>৳ ${bnNum(c.total_amount)}</strong> (${bnNum(c.total_beneficiaries)} জন)
+                    </span>
+                  `).join('')}
+                </div>
+              </div>
+            ` : `
+              <div style="background: #fff; border: 1px dashed #FFE082; border-radius: 8px; padding: 6px 10px; margin-bottom: 14px; font-size: 0.75rem; color: #888; text-align: center;">
+                শীতকালে কম্বল, বন্যায় খাদ্য বা চিকিৎসা সহায়তায় কোনো এন্ট্রি দিলে এখানে খাতভিত্তিক বিবরণ প্রদর্শিত হবে।
+              </div>
+            `}
+
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-sm btn-gold" style="background: #E65100; color: #fff; border-color: #E65100; flex: 1; font-size: 0.82rem; font-weight: 700;" onclick="App.openModal('welfare_grant')">
+                🌾 নতুন ত্রাণ ও সহায়তা বিতরণ
+              </button>
+              <button class="btn btn-sm btn-outline-green" style="flex: 1; font-size: 0.82rem; font-weight: 700;" onclick="App.navigateAdmin('welfare')">
+                📋 ত্রাণ অডিট খাতা
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- 16 Real Database-Driven Stats Cards (Clickable Drilldown) -->
       <div class="stats-grid">
         <div class="stat-card clickable" onclick="App.showStatDetailsModal('cashBalance')" title="ক্লিক করে নগদ ব্যালেন্স ও ক্যাশবুকের বিস্তারিত দেখুন">
@@ -3877,17 +4069,21 @@ const Components = {
         <div class="stat-card clickable" onclick="App.showStatDetailsModal('totalLiquidBalance')" style="border: 2px solid var(--primary-deep-green);" title="ক্লিক করে মোট তরল তহবিল ও কে কত টাকা জমা দিয়েছে তার তালিকা দেখুন">
           <div class="stat-icon green">💼</div>
           <div class="stat-info">
-            <h4>মোট তরল তহবিল</h4>
+            <h4>মোট তরল ব্যালেন্স (ক্যাশ+ব্যাংক+বিকাশ)</h4>
             <div class="stat-value" style="color: var(--primary-deep-green);">৳ ${bnNum(stats.totalLiquidBalance)}</div>
-            <div class="stat-click-hint"><span>🔍</span> কে কত জমা দিয়েছে দেখুন</div>
+            <div style="font-size: 0.72rem; color: #2E7D32; margin-top: 3px; font-weight: 600;">
+              🔄 কর্জে ক্যাশ: ৳${bnNum(stats.karjeSector?.availableCash || 0)} | 🌾 ত্রাণ জমা: ৳${bnNum(stats.emergencySector?.availableBalance || 0)}
+            </div>
           </div>
         </div>
         <div class="stat-card clickable" onclick="App.showStatDetailsModal('totalDonations')" title="ক্লিক করে মোট যাচাইকৃত অনুদান ও সকল দাতার তালিকা দেখুন">
           <div class="stat-icon green">❤️</div>
           <div class="stat-info">
-            <h4>মোট অনুদান (যাচাইকৃত)</h4>
+            <h4>মোট অনুদান সংগ্রহ</h4>
             <div class="stat-value">৳ ${bnNum(stats.totalDonations)}</div>
-            <div class="stat-click-hint"><span>🔍</span> অনুদান তালিকা দেখতে ক্লিক করুন</div>
+            <div style="font-size: 0.72rem; color: #0D47A1; margin-top: 3px; font-weight: 600;">
+              🔄 কর্জে: ৳${bnNum(stats.karjeSector?.totalCapital || 0)} | 🌾 ত্রাণ: ৳${bnNum(stats.emergencySector?.totalDonations || 0)}
+            </div>
           </div>
         </div>
         <div class="stat-card clickable" onclick="App.showStatDetailsModal('thisMonthDonations')" title="ক্লিক করে এই মাসের সকল অনুদানের তালিকা দেখুন">

@@ -92,6 +92,103 @@ function toBengaliNumeral(num) {
   return String(num).replace(/[0-9]/g, w => bn[+w]);
 }
 
+// Convert currency number to Bengali words for official digital receipts
+function numberToBengaliWords(n) {
+  n = Math.floor(Math.abs(Number(n))) || 0;
+  if (n === 0) return 'শূন্য টাকা মাত্র';
+  const units = ['', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়', 'দশ',
+    'এগারো', 'বারো', 'তেরো', 'চৌদ্দ', 'পনেরো', 'ষোলো', 'সতেরো', 'আঠারো', 'উনিশ', 'বিশ',
+    'একুশ', 'বাইশ', 'তেইশ', 'চব্বিশ', 'পঁচিশ', 'ছাব্বিশ', 'সাতাশ', 'আটাশ', 'ঊনত্রিশ', 'ত্রিশ',
+    'একত্রিশ', 'বত্রিশ', 'তেত্রিশ', 'চৌত্রিশ', 'পঁয়ত্রিশ', 'ছত্রিশ', 'সাঁইত্রিশ', 'আটত্রিশ', 'ঊনচল্লিশ', 'চল্লিশ',
+    'একচল্লিশ', 'বিয়াল্লিশ', 'তেতাল্লিশ', 'চুয়াল্লিশ', 'পঁয়তাল্লিশ', 'ছেচল্লিশ', 'সাতচল্লিশ', 'আটচল্লিশ', 'ঊনপঞ্চাশ', 'পঞ্চাশ',
+    'একান্ন', 'বায়ান্ন', 'তিপ্পান্ন', 'চুয়ান্ন', 'পঞ্চান্ন', 'ছাপ্পান্ন', 'সাতান্ন', 'আটান্ন', 'ঊনষাট', 'ষাট',
+    'একষট্টি', 'বাষট্টি', 'তেষট্টি', 'চৌষট্টি', 'পঁয়ষট্টি', 'ছেষট্টি', 'সাতষট্টি', 'আটষট্টি', 'ঊনসত্তর', 'সত্তর',
+    'একাত্তর', 'বাহাত্তর', 'তিয়াত্তর', 'চুয়াত্তর', 'পঁচাত্তর', 'ছিয়াত্তর', 'সাতাত্তর', 'আটাত্তর', 'ঊনআশি', 'আশি',
+    'একাশি', 'বিরাশি', 'তিরাশি', 'চুরাশি', 'পঁচাশি', 'ছিয়াশি', 'সাতাশি', 'অষ্টআশি', 'ঊননব্বই', 'নব্বই',
+    'একানব্বই', 'বানব্বই', 'তিরানব্বই', 'চুরানব্বই', 'পঁচানব্বই', 'ছিয়ানব্বই', 'সাতানব্বই', 'আটানব্বই', 'নিরানব্বই'];
+
+  function convertTwoDigits(num) {
+    return units[num] || '';
+  }
+
+  let words = '';
+  const crore = Math.floor(n / 10000000);
+  n %= 10000000;
+  const lakh = Math.floor(n / 100000);
+  n %= 100000;
+  const thousand = Math.floor(n / 1000);
+  n %= 1000;
+  const hundred = Math.floor(n / 100);
+  const remainder = n % 100;
+
+  if (crore > 0) words += convertTwoDigits(crore) + ' কোটি ';
+  if (lakh > 0) words += convertTwoDigits(lakh) + ' লাখ ';
+  if (thousand > 0) words += convertTwoDigits(thousand) + ' হাজার ';
+  if (hundred > 0) words += convertTwoDigits(hundred) + ' শত ';
+  if (remainder > 0) words += convertTwoDigits(remainder) + ' ';
+
+  return words.trim() + ' টাকা মাত্র';
+}
+
+// Build Complete Digital Money Receipt Payload with WhatsApp messaging
+function buildDonationReceiptPayload(donationIdOrReceipt) {
+  try {
+    const don = db.get(
+      `SELECT d.*, f.name_bn as fund_name, f.code as fund_code, fa.name_bn as account_name
+       FROM donations d
+       JOIN funds f ON d.fund_id = f.id
+       JOIN financial_accounts fa ON d.financial_account_id = fa.id
+       WHERE d.id = ? OR d.receipt_number = ?`,
+      [donationIdOrReceipt, donationIdOrReceipt]
+    );
+    if (!don) return null;
+
+    const org = db.get('SELECT * FROM organization_settings WHERE id = 1') || {
+      name_bn: 'কর্জে হাসানা ফাউন্ডেশন',
+      name_en: 'Karje Hasana Foundation',
+      location: 'রৌমারী, কুড়িগ্রাম, বাংলাদেশ',
+      address: 'Life Care Hospital, Rowmari, Kurigram, Bangladesh',
+      chairman_name: 'MD SHAH ALAM',
+      phone: '01966442769',
+      helpline: '01966442769'
+    };
+
+    const amountInWords = numberToBengaliWords(don.amount);
+    const isRevolving = don.fund_id === 1 || don.fund_code === 'KARJE_HASENA';
+
+    const whatsappMessage = `আসসালামু আলাইকুম ওয়া রাহমাতুল্লাহ,
+সম্মানিত ${don.donor_name},
+
+কর্জে হাসানা ফাউন্ডেশন, রৌমারী, কুড়িগ্রাম-এ আপনার মহতী অনুদানটি সফলভাবে গৃহীত হয়েছে।
+
+🧾 ডিজিটাল মানি রিসিট নং: ${don.receipt_number}
+📅 সংগ্রহের তারিখ: ${don.date}
+💰 অনুদানের পরিমাণ: ৳ ${toBengaliNumeral(don.amount)} (${amountInWords})
+📂 তহবিলের খাত: ${don.fund_name} (${isRevolving ? 'ঘূর্ণায়মান সুদমুক্ত মূলধন' : 'এককালীন মানবিক ত্রাণ'})
+💳 জমার মাধ্যম: ${don.payment_method} ${don.transaction_reference ? `(TrxID: ${don.transaction_reference})` : ''}
+🟢 স্ট্যাটাস: নিশ্চিত ও সংরক্ষিত ✓
+
+মহান আল্লাহ তাআলা আপনার এই দানকে কবুল করুন এবং উভয় জাহানে উত্তম প্রতিদান দান করুন। আমিন।
+
+- প্রতিষ্ঠাতা চেয়ারম্যান: ${org.chairman_name}
+${org.name_bn}, ${org.location}
+📞 হেল্পলাইন: ${org.phone}`;
+
+    return {
+      ...don,
+      amount_bn: toBengaliNumeral(don.amount),
+      amount_in_words: amountInWords,
+      fund_nature: isRevolving ? 'ঘূর্ণায়মান তহবিল (সম্পূর্ণ ফেরতযোগ্য মূলধন)' : 'এককালীন সহায়তা তহবিল (অ-ফেরতযোগ্য ত্রাণ)',
+      is_revolving: isRevolving,
+      organization: org,
+      whatsapp_message: whatsappMessage
+    };
+  } catch (err) {
+    console.error('Error building receipt payload:', err);
+    return null;
+  }
+}
+
 // Helper: Get Asia/Dhaka Today in YYYY-MM-DD
 function getDhakaDateStr(dateObj = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -580,11 +677,25 @@ app.get('/api/public/summary', (req, res) => {
     const welfareBeneficiariesCount = db.get('SELECT COALESCE(SUM(beneficiary_count), 0) as s FROM welfare_grants')?.s || 0;
     const welfareActivitiesCount = db.get('SELECT COUNT(*) as c FROM welfare_grants')?.c || 0;
 
+    // Sector 1: Karje Hasena Fund (Revolving Capital - 100% Refundable)
+    const karjeDonations = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = 1 AND status = "নিশ্চিত"')?.s || 0;
+    const karjeAvailableCash = Math.max(0, karjeDonations - loansDisbursed + loansRepaid);
+
+    // Sector 2: Emergency Relief Fund (One-Time Aid - Non-refundable)
+    const emergencyDonations = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = 2 AND status = "নিশ্চিত"')?.s || 0;
+    const emergencySpent = totalWelfareAid;
+    const emergencyBalance = Math.max(0, emergencyDonations - emergencySpent);
+
     res.json({
       success: true,
       data: {
         donorsCount,
         donationsTotal,
+        karjeDonations,
+        karjeAvailableCash,
+        emergencyDonations,
+        emergencySpent,
+        emergencyBalance,
         loansDisbursed,
         loansRepaid,
         activeBeneficiaries,
@@ -780,6 +891,39 @@ app.get('/api/dashboard/stats', (req, res) => {
 
     const totalLiquidBalance = cashBalance + bankBalance + bkashBalance;
 
+    // ========================================================
+    // 2 DISTINCT CORE SECTORS (দুটো আলাদা কেন্দ্রীয় তহবিল)
+    // ========================================================
+
+    // SECTOR 1: কর্জে হাসানা ঘূর্ণায়মান তহবিল (সুদমুক্ত ধার - সম্পূর্ণ ফেরতযোগ্য মূলধন)
+    const karjeFund = db.get('SELECT * FROM funds WHERE id = 1 OR code = "KARJE_HASENA"');
+    const karjeFundId = karjeFund ? karjeFund.id : 1;
+    const karjeTotalCapital = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = ? AND status = "নিশ্চিত"', [karjeFundId])?.s || 0;
+    const karjeTotalDisbursed = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans WHERE fund_id = ?', [karjeFundId])?.s || 0;
+    const karjeTotalRepaid = db.get('SELECT COALESCE(SUM(total_principal_repaid), 0) as s FROM loans WHERE fund_id = ?', [karjeFundId])?.s || 0;
+    const karjeOutstanding = karjeTotalDisbursed - karjeTotalRepaid;
+    const karjeAvailableCash = (karjeFund?.opening_balance || 0) + karjeTotalCapital - karjeOutstanding;
+    const karjeActiveLoansCount = db.get('SELECT COUNT(*) as c FROM loans WHERE fund_id = ? AND loan_status IN ("সক্রিয়", "মেয়াদোত্তীর্ণ") AND outstanding_principal > 0', [karjeFundId])?.c || 0;
+
+    // SECTOR 2: জরুরি ও এককালীন সহায়তা তহবিল (শীতবস্ত্র, খাদ্য, চিকিৎসা ও ত্রাণ - অ-ফেরতযোগ্য)
+    const emergencyFund = db.get('SELECT * FROM funds WHERE id = 2 OR code = "EMERGENCY_RELIEF"');
+    const emergencyFundId = emergencyFund ? emergencyFund.id : 2;
+    const emergencyTotalDonations = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = ? AND status = "নিশ্চিত"', [emergencyFundId])?.s || 0;
+    const emergencyTotalSpent = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM welfare_grants WHERE fund_id = ?', [emergencyFundId])?.s || 0;
+    const emergencyAvailableBalance = (emergencyFund?.opening_balance || 0) + emergencyTotalDonations - emergencyTotalSpent;
+    const emergencyBeneficiariesCount = db.get('SELECT COALESCE(SUM(beneficiary_count), 0) as s FROM welfare_grants WHERE fund_id = ?', [emergencyFundId])?.s || 0;
+    const emergencyActivitiesCount = db.get('SELECT COUNT(*) as c FROM welfare_grants WHERE fund_id = ?', [emergencyFundId])?.c || 0;
+
+    // Emergency Category Breakdown (খাতভিত্তিক ব্যয়: শীতকালীন কম্বল, খাদ্য সামগ্রী, চিকিৎসা ইত্যাদি)
+    const emergencyCategoryBreakdown = db.query(
+      `SELECT category, COALESCE(SUM(amount), 0) as total_amount, COUNT(*) as activity_count, COALESCE(SUM(beneficiary_count), 0) as total_beneficiaries
+       FROM welfare_grants
+       WHERE fund_id = ?
+       GROUP BY category
+       ORDER BY total_amount DESC`,
+      [emergencyFundId]
+    );
+
     // Donations
     const totalDonations = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE status = "নিশ্চিত"')?.s || 0;
     const thisMonthDonations = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE status = "নিশ্চিত" AND date LIKE ?', [currentMonthPrefix + '%'])?.s || 0;
@@ -858,6 +1002,28 @@ app.get('/api/dashboard/stats', (req, res) => {
         bankBalance,
         bkashBalance,
         totalLiquidBalance,
+        karjeSector: {
+          fundId: karjeFundId,
+          fundName: 'কর্জে হাসানা ঘূর্ণায়মান তহবিল',
+          totalCapital: karjeTotalCapital,
+          totalDisbursed: karjeTotalDisbursed,
+          totalRepaid: karjeTotalRepaid,
+          outstandingLoans: karjeOutstanding,
+          availableCash: karjeAvailableCash,
+          activeLoansCount: karjeActiveLoansCount,
+          isRefundable: true
+        },
+        emergencySector: {
+          fundId: emergencyFundId,
+          fundName: 'জরুরি ও এককালীন সহায়তা তহবিল',
+          totalDonations: emergencyTotalDonations,
+          totalSpent: emergencyTotalSpent,
+          availableBalance: emergencyAvailableBalance,
+          beneficiariesCount: emergencyBeneficiariesCount,
+          activitiesCount: emergencyActivitiesCount,
+          categoryBreakdown: emergencyCategoryBreakdown,
+          isRefundable: false
+        },
         totalDonations,
         thisMonthDonations,
         totalDisbursed,
@@ -1130,11 +1296,12 @@ app.post('/api/donations', (req, res) => {
     db.transaction(({ run }) => {
       let donorId = b.donor_id && b.donor_id !== 'NEW' && b.donor_id !== '' ? b.donor_id : null;
 
+      const donorMobile = (b.donor_mobile || b.mobile || '').toString().trim();
       // Auto-detect existing donor by mobile or name, or automatically register new donor!
       if (!donorId && b.donor_name) {
         let existing = null;
-        if (b.donor_mobile && b.donor_mobile.trim()) {
-          existing = db.get('SELECT id FROM donors WHERE mobile = ? LIMIT 1', [b.donor_mobile.trim()]);
+        if (donorMobile) {
+          existing = db.get('SELECT id FROM donors WHERE mobile = ? LIMIT 1', [donorMobile]);
         }
         if (!existing && b.donor_name.trim()) {
           existing = db.get('SELECT id FROM donors WHERE name_bn = ? LIMIT 1', [b.donor_name.trim()]);
@@ -1148,7 +1315,7 @@ app.post('/api/donations', (req, res) => {
             `INSERT INTO donors (
               id, name_bn, mobile, whatsapp, category, frequency, commitment_amount, status, created_at
             ) VALUES (?, ?, ?, ?, 'এককালীন দাতা', 'এককালীন', 0, 'active', datetime('now'))`,
-            [donorId, b.donor_name.trim(), b.donor_mobile ? b.donor_mobile.trim() : '', b.donor_mobile ? b.donor_mobile.trim() : '']
+            [donorId, b.donor_name.trim(), donorMobile, donorMobile]
           );
         }
       }
@@ -1161,7 +1328,7 @@ app.post('/api/donations', (req, res) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
         [
           donationId, receiptNumber, donorId, b.donor_name.trim(),
-          b.donor_mobile || '', amount, parseInt(b.fund_id, 10),
+          donorMobile, amount, parseInt(b.fund_id, 10),
           parseInt(b.financial_account_id, 10), b.payment_method || 'নগদ',
           b.transaction_reference || '', status, dateStr,
           b.recorded_by || 'হিসাবরক্ষক',
@@ -1192,14 +1359,38 @@ app.post('/api/donations', (req, res) => {
 
     logAudit(b.user_id, b.user_name, 'CREATE', 'donations', donationId, `Recorded donation ৳${amount} from ${b.donor_name}`, req);
     console.log(`[DONATION] Successfully recorded donation: ৳${amount} from "${b.donor_name}" (Receipt: ${receiptNumber})`);
+    const receiptData = buildDonationReceiptPayload(donationId);
     res.json({
       success: true,
-      message: 'অনুদান সফলভাবে রেকর্ড করা হয়েছে।',
+      message: 'অনুদান সফলভাবে রেকর্ড করা হয়েছে এবং ডিজিটাল মানি রিসিট প্রস্তুত!',
       donationId,
-      receiptNumber
+      receiptNumber,
+      receipt: receiptData
     });
   } catch (err) {
     console.error('[DONATION ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get Full Digital Money Receipt Data (for Print, Download, and WhatsApp sharing)
+app.get('/api/donations/:id/receipt', (req, res) => {
+  try {
+    const receipt = buildDonationReceiptPayload(req.params.id);
+    if (!receipt) return res.status(404).json({ success: false, message: 'রসিদ পাওয়া যায়নি।' });
+    res.json({ success: true, data: receipt });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Public Receipt Verification
+app.get('/api/public/receipt/:receiptNumber', (req, res) => {
+  try {
+    const receipt = buildDonationReceiptPayload(req.params.receiptNumber);
+    if (!receipt) return res.status(404).json({ success: false, message: 'প্রদত্ত নম্বরে কোনো বৈধ রসিদ পাওয়া যায়নি।' });
+    res.json({ success: true, data: receipt });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -1269,8 +1460,15 @@ app.post('/api/bkash-submissions/:id/verify', (req, res) => {
     const receiptNumber = 'REC-DON-' + Date.now().toString().slice(-6);
     const trxId = 'TRX-' + Date.now().toString().slice(-6);
 
-    // Map fund_category to fund_id
-    const fund = db.get('SELECT id FROM funds WHERE name_bn LIKE ? OR code = "GENERAL"', [`%${sub.fund_category}%`]) || { id: 1 };
+    // Map fund_category to fund_id (Strictly Sector 1 or Sector 2)
+    let fund = db.get('SELECT id FROM funds WHERE name_bn LIKE ?', [`%${sub.fund_category}%`]);
+    if (!fund) {
+      if (sub.fund_category && (sub.fund_category.includes('জরুরি') || sub.fund_category.includes('ত্রাণ') || sub.fund_category.includes('কম্বল') || sub.fund_category.includes('খাদ্য') || sub.fund_category.includes('চিকিৎসা'))) {
+        fund = { id: 2 };
+      } else {
+        fund = { id: 1 };
+      }
+    }
     // bKash account is id 3
     const bkashAccount = db.get('SELECT id FROM financial_accounts WHERE account_type = "mfs" OR name_bn LIKE "%বিকাশ%"') || { id: 3 };
 
@@ -1315,11 +1513,13 @@ app.post('/api/bkash-submissions/:id/verify', (req, res) => {
     });
 
     logAudit(req.body.user_id, req.body.user_name, 'VERIFY', 'bkash_submissions', sub.id, `Verified bKash TrxID: ${sub.transaction_id} (৳${sub.amount})`, req);
+    const receiptData = buildDonationReceiptPayload(donationId);
     res.json({
       success: true,
       message: 'বিকাশ পেমেন্ট সফলভাবে যাচাই করা হয়েছে এবং অনুদান রসিদ তৈরি হয়েছে!',
       donationId,
-      receiptNumber
+      receiptNumber,
+      receipt: receiptData
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -2282,7 +2482,7 @@ app.get('/api/accounts', (req, res) => {
 
 app.get('/api/funds', (req, res) => {
   try {
-    const funds = db.query('SELECT * FROM funds');
+    const funds = db.query('SELECT * FROM funds ORDER BY id ASC');
     for (const fund of funds) {
       const donationIn = db.get('SELECT COALESCE(SUM(amount), 0) as s FROM donations WHERE fund_id = ? AND status = "নিশ্চিত"', [fund.id])?.s || 0;
       const loanDisb = db.get('SELECT COALESCE(SUM(original_principal), 0) as s FROM loans WHERE fund_id = ?', [fund.id])?.s || 0;
@@ -2292,7 +2492,16 @@ app.get('/api/funds', (req, res) => {
       fund.total_disbursed = loanDisb;
       fund.total_repaid = loanRepaid;
       fund.total_welfare = welfareOut;
-      fund.current_balance = fund.opening_balance + donationIn - loanDisb + loanRepaid - welfareOut;
+      fund.outstanding_loans = loanDisb - loanRepaid;
+      // For revolving loan fund (Sector 1): balance = opening + donations - loanDisb + loanRepaid
+      // For emergency relief fund (Sector 2): balance = opening + donations - welfareOut
+      if (fund.id === 1 || fund.code === 'KARJE_HASENA') {
+        fund.current_balance = fund.opening_balance + donationIn - loanDisb + loanRepaid;
+        fund.is_refundable = true;
+      } else {
+        fund.current_balance = fund.opening_balance + donationIn - welfareOut;
+        fund.is_refundable = false;
+      }
     }
     res.json({ success: true, data: funds });
   } catch (err) {
