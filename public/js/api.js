@@ -84,6 +84,7 @@ const API = {
   getBkashSubmissions: () => API.request('/api/bkash-submissions'),
   verifyBkashSubmission: (id, data) => API.request(`/api/bkash-submissions/${id}/verify`, { method: 'POST', body: JSON.stringify(data) }),
   rejectBkashSubmission: (id, data) => API.request(`/api/bkash-submissions/${id}/reject`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteBkashSubmission: (id) => API.request(`/api/bkash-submissions/${id}`, { method: 'DELETE' }),
 
   // Applications
   getApplications: (params = '') => API.request('/api/applications' + (params ? '?' + params : '')),
@@ -91,15 +92,20 @@ const API = {
   verifyApplication: (id, data) => API.request(`/api/applications/${id}/verify`, { method: 'POST', body: JSON.stringify(data) }),
   approveApplication: (id, data) => API.request(`/api/applications/${id}/approve`, { method: 'POST', body: JSON.stringify(data) }),
   rejectApplication: (id, data) => API.request(`/api/applications/${id}/reject`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteApplication: (id) => API.request(`/api/applications/${id}`, { method: 'DELETE' }),
 
   // Loans & Disbursements
   getLoans: (params = '') => API.request('/api/loans' + (params ? '?' + params : '')),
   getLoan: (id) => API.request(`/api/loans/${id}`),
   disburseLoan: (data) => API.request('/api/loans/disburse', { method: 'POST', body: JSON.stringify(data) }),
   extendLoan: (id, data) => API.request(`/api/loans/${id}/extend`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteLoan: (id) => API.request(`/api/loans/${id}`, { method: 'DELETE' }),
 
   // Repayments
+  getRepayments: (loanId = '') => API.request('/api/repayments' + (loanId ? '?loan_id=' + loanId : '')),
   recordRepayment: (data) => API.request('/api/repayments', { method: 'POST', body: JSON.stringify(data) }),
+  updateRepayment: (id, data) => API.request(`/api/repayments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteRepayment: (id) => API.request(`/api/repayments/${id}`, { method: 'DELETE' }),
 
   // Expenses
   getExpenses: () => API.request('/api/expenses'),

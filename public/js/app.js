@@ -2127,7 +2127,7 @@ const App = {
                       <th>অনুদানের খাত</th>
                       <th style="text-align: right;">পরিমাণ</th>
                       <th>পদ্ধতি / TrxID</th>
-                      <th style="text-align: center;">রসিদ প্রিন্ট</th>
+                      <th style="text-align: center; min-width: 170px;">অ্যাকশন ও রসিদ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2140,8 +2140,12 @@ const App = {
                         <td>${vd.fund_name}</td>
                         <td style="text-align: right; font-weight: 700; color: #075B3B;">৳ ${bnNum(vd.amount)}</td>
                         <td>${vd.payment_method} ${vd.transaction_reference ? `(${vd.transaction_reference})` : ''}</td>
-                        <td style="text-align: center;">
-                          <button class="btn btn-sm btn-outline-green" onclick="App.printDocument('donation_receipt', '${vd.id}')" style="padding: 2px 8px; font-size: 0.75rem;">🖨️ রসিদ</button>
+                        <td style="text-align: center; white-space: nowrap;">
+                          <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center;">
+                            <button class="btn btn-sm btn-outline-green" onclick="App.printDocument('donation_receipt', '${vd.id}')" style="padding: 3px 6px; font-size: 0.75rem;">🖨️ রসিদ</button>
+                            <button class="btn btn-sm btn-outline-green" onclick="App.closeModal(); App.openEditDonationModal('${vd.id}')" style="padding: 3px 6px; font-size: 0.75rem; background: #e8f5ec; color: #075B3B; border-color: #075B3B;" title="অনুদানের তথ্য সংশোধন করুন">✏️ সংশোধন</button>
+                            <button class="btn btn-sm btn-danger" onclick="App.closeModal(); App.deleteDonationConfirm('${vd.id}', '${vd.receipt_number}', ${vd.amount})" style="padding: 3px 6px; font-size: 0.75rem;" title="অনুদান মুছে ফেলুন">🗑️ মুছুন</button>
+                          </div>
                         </td>
                       </tr>
                     `).join('')}
@@ -2182,6 +2186,7 @@ const App = {
                     <th>বিবরণ</th>
                     <th>ভাউচার / রেফারেন্স</th>
                     <th style="text-align: right;">পরিমাণ (৳)</th>
+                    <th style="text-align: center; min-width: 140px;">অ্যাকশন</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2198,9 +2203,15 @@ const App = {
                       <td style="text-align: right; font-weight: 700; color: ${t.direction === 'IN' ? '#075B3B' : '#C62828'};">
                         ৳ ${bnNum(t.amount)}
                       </td>
+                      <td style="text-align: center; white-space: nowrap;">
+                        <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center;">
+                          <button class="btn btn-sm btn-outline-green" style="padding: 3px 6px; font-size: 0.75rem; background: #e8f5ec; color: #075B3B; border-color: #075B3B;" onclick="App.closeModal(); App.openEditTransaction('${t.id}')" title="সংশোধন করুন">✏️ সংশোধন</button>
+                          <button class="btn btn-sm btn-danger" style="padding: 3px 6px; font-size: 0.75rem;" onclick="App.closeModal(); App.deleteTransactionConfirm('${t.id}', '${t.type}', ${t.amount})" title="মুছে ফেলুন">🗑️ মুছুন</button>
+                        </div>
+                      </td>
                     </tr>
                   `).join('')}
-                  ${cashTrx.length === 0 ? `<tr><td colspan="5" style="text-align: center; color: #777; padding: 20px;">কোনো নগদ লেনদেন পাওয়া যায়নি।</td></tr>` : ''}
+                  ${cashTrx.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #777; padding: 20px;">কোনো নগদ লেনদেন পাওয়া যায়নি।</td></tr>` : ''}
                 </tbody>
               </table>
             </div>
@@ -2817,6 +2828,7 @@ const App = {
                     <th>হিসাব</th>
                     <th>ভাউচার নং</th>
                     <th style="text-align: right;">পরিমাণ (৳)</th>
+                    <th style="text-align: center; min-width: 140px;">অ্যাকশন</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2828,9 +2840,15 @@ const App = {
                       <td>${e.account_name}</td>
                       <td style="font-family: var(--font-en); font-weight: 600;">${e.voucher_no || 'N/A'}</td>
                       <td style="text-align: right; font-weight: 700; color: #C62828;">৳ ${bnNum(e.amount)}</td>
+                      <td style="text-align: center; white-space: nowrap;">
+                        <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center;">
+                          <button class="btn btn-sm btn-outline-green" style="padding: 3px 6px; font-size: 0.75rem; background: #e8f5ec; color: #075B3B; border-color: #075B3B;" onclick="App.closeModal(); App.openEditExpenseModal('${e.id}')" title="ব্যয় সংশোধন করুন">✏️ সংশোধন</button>
+                          <button class="btn btn-sm btn-danger" style="padding: 3px 6px; font-size: 0.75rem;" onclick="App.closeModal(); App.deleteExpenseConfirm('${e.id}', '${e.category}', ${e.amount})" title="ব্যয় মুছে ফেলুন">🗑️ মুছুন</button>
+                        </div>
+                      </td>
                     </tr>
                   `).join('')}
-                  ${thisMonthExp.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #777; padding: 20px;">এই মাসে কোনো ব্যয়ের এন্ট্রি নেই।</td></tr>` : ''}
+                  ${thisMonthExp.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #777; padding: 20px;">এই মাসে কোনো ব্যয়ের এন্ট্রি নেই।</td></tr>` : ''}
                 </tbody>
               </table>
             </div>
@@ -2864,7 +2882,7 @@ const App = {
                     <th>ট্রানজ্যাকশন আইডি (TrxID)</th>
                     <th>পরিমাণ</th>
                     <th>স্ক্রিনশট</th>
-                    <th style="text-align: center;">যাচাই অ্যাকশন</th>
+                    <th style="text-align: center;">যাচাই ও অ্যাকশন</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2877,9 +2895,10 @@ const App = {
                       <td style="font-weight: 700; color: #075B3B;">৳ ${bnNum(s.amount)}</td>
                       <td>${s.screenshot_path ? `<a href="${s.screenshot_path}" target="_blank" class="btn btn-sm btn-outline">ছবি দেখুন</a>` : 'নেই'}</td>
                       <td style="text-align: center;">
-                        <div style="display: flex; gap: 6px; justify-content: center;">
+                        <div style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap;">
                           <button class="btn btn-sm btn-primary" onclick="App.verifyBkashSubmissionAction('${s.id}')">✓ যাচাই ও ক্রেডিট</button>
                           <button class="btn btn-sm btn-danger" onclick="App.rejectBkashSubmissionAction('${s.id}')">✕ বাতিল</button>
+                          <button class="btn btn-sm btn-danger" onclick="App.deleteBkashSubmissionConfirm('${s.id}')" style="padding: 3px 6px; font-size: 0.75rem;" title="মুছে ফেলুন">🗑️ মুছুন</button>
                         </div>
                       </td>
                     </tr>
@@ -3391,6 +3410,125 @@ const App = {
       this.navigateAdmin('bkash');
     } catch (err) {
       alert(`ব্যর্থ: ${err.message}`);
+    }
+  },
+
+  async deleteBkashSubmissionConfirm(id) {
+    if (!confirm(`⚠️ আপনি কি নিশ্চিতভাবে এই বিকাশ/নগদ পেমেন্ট সাবমিশনটি (#${id}) মুছে ফেলতে চান?`)) return;
+    try {
+      const res = await API.deleteBkashSubmission(id);
+      alert(res.message || 'সাবমিশনটি সফলভাবে মুছে ফেলা হয়েছে।');
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'bkash');
+      }
+    } catch (err) {
+      alert('মুছে ফেলতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async deleteApplicationConfirm(id, applicantName) {
+    if (!confirm(`⚠️ আপনি কি নিশ্চিতভাবে আবেদনকারী "${applicantName}"-এর ঋণ আবেদনপত্রটি (#${id}) মুছে ফেলতে চান?\n\nযদি ইতিমধ্যে ঋণ বিতরণ করা থাকে, তবে আগে ঋণটি বাতিল/মুছে ফেলতে হবে।`)) return;
+    try {
+      const res = await API.deleteApplication(id);
+      alert(res.message || 'আবেদনপত্রটি সফলভাবে মুছে ফেলা হয়েছে।');
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'applications');
+      }
+    } catch (err) {
+      alert('আবেদনপত্র মুছে ফেলতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async deleteLoanConfirm(id, applicantName, amount) {
+    const formattedAmount = (typeof formatBDT === 'function') ? formatBDT(amount) : ('৳ ' + amount);
+    if (!confirm(`⚠️ আপনি কি নিশ্চিতভাবে "${applicantName}"-এর এই ঋণটি (#${id}, মূলধন: ${formattedAmount}) মুছে ফেলতে চান?\n\nএটি মুছে ফেললে:\n১. ঋণ বিতরণের ক্যাশবুক লেনদেন বাতিল হবে এবং মূলধন একাউন্ট ব্যালেন্সে ফেরত আসবে।\n২. এই ঋণের সকল কিস্তি/ফেরত ও সংশ্লিষ্ট ক্যাশবুক এন্ট্রি মুছে যাবে।\n৩. মূল আবেদনটি পুনরায় 'অনুমোদিত' অবস্থায় ফিরে যাবে।`)) return;
+    try {
+      const res = await API.deleteLoan(id);
+      alert(res.message || 'ঋণ ও সংশ্লিষ্ট সকল রেকর্ড সফলভাবে মুছে ফেলা হয়েছে।');
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'repayments');
+      }
+    } catch (err) {
+      alert('ঋণ মুছে ফেলতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async viewLoanRepayments(loanId) {
+    try {
+      const res = await API.getRepayments(loanId);
+      const repayments = (res && res.success) ? (res.data || []) : [];
+      const loan = (this.state.loans || []).find(l => l.id === loanId);
+      const borrowerName = loan ? loan.applicant_name : 'ঋণ গ্রহীতা';
+
+      const html = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="background: #f4faf6; border: 1.5px solid #075b3b33; padding: 12px 14px; border-radius: 8px;">
+            <div style="font-weight: 700; color: #075B3B; font-size: 1.05rem;">
+              👤 গ্রহীতা: ${borrowerName} (ধার আইডি: ${loanId})
+            </div>
+            <div style="display: flex; gap: 15px; margin-top: 6px; font-size: 0.9rem; flex-wrap: wrap;">
+              <span>মূল ঋণ: <strong>৳ ${bnNum(loan?.original_principal || 0)}</strong></span>
+              <span style="color: #075B3B;">মোট আদায়: <strong>৳ ${bnNum(loan?.total_principal_repaid || 0)}</strong></span>
+              <span style="color: ${loan?.outstanding_principal > 0 ? '#C62828' : '#075B3B'}; font-weight: 700;">
+                অবশিষ্ট বকেয়া: ৳ ${bnNum(loan?.outstanding_principal || 0)}
+              </span>
+            </div>
+          </div>
+
+          <div style="font-weight: 700; color: #1B2E25;">📋 কিস্তি আদায়ের বিস্তারিত তালিকা (${bnNum(repayments.length)} টি কিস্তি):</div>
+          <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>রসিদ নং</th>
+                  <th>তারিখ</th>
+                  <th>জমার হিসাব</th>
+                  <th>মাধ্যম</th>
+                  <th style="text-align: right;">পরিমাণ (৳)</th>
+                  <th style="text-align: center;">অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${repayments.map(r => `
+                  <tr>
+                    <td style="font-family: var(--font-en); font-weight: 600;">${r.receipt_number || r.id}</td>
+                    <td>${r.date}</td>
+                    <td>${r.account_name}</td>
+                    <td>${r.payment_method || 'নগদ'} ${r.transaction_reference ? `(${r.transaction_reference})` : ''}</td>
+                    <td style="text-align: right; font-weight: 700; color: #075B3B;">৳ ${bnNum(r.amount)}</td>
+                    <td style="text-align: center; white-space: nowrap;">
+                      <button class="btn btn-sm btn-danger" onclick="App.deleteRepaymentConfirm('${r.id}', '${loanId}', ${r.amount})" style="padding: 3px 8px; font-size: 0.78rem;" title="ভুল কিস্তি মুছে ফেলুন">🗑️ মুছুন</button>
+                    </td>
+                  </tr>
+                `).join('')}
+                ${repayments.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #777; padding: 20px;">এই ঋণের বিপরীতে এখনো কোনো কিস্তি জমা হয়নি।</td></tr>` : ''}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      this.openModal(`🔄 কিস্তি আদায় তালিকা — ${borrowerName}`, html);
+    } catch (err) {
+      alert('কিস্তি তালিকা লোড করতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async deleteRepaymentConfirm(repaymentId, loanId, amount) {
+    const formattedAmount = (typeof formatBDT === 'function') ? formatBDT(amount) : ('৳ ' + amount);
+    if (!confirm(`⚠️ আপনি কি নিশ্চিতভাবে এই কিস্তির রেকর্ডটি (#${repaymentId}, পরিমাণ: ${formattedAmount}) মুছে ফেলতে চান?\n\nএটি মুছে ফেললে ধারের মোট পরিশোধিত টাকা কমে যাবে এবং ক্যাশবুক লেজার ও একাউন্ট ব্যালেন্স স্বয়ংক্রিয়ভাবে সমন্বয় হবে।`)) return;
+    try {
+      const res = await API.deleteRepayment(repaymentId);
+      alert(res.message || 'কিস্তি সফলভাবে মুছে ফেলা হয়েছে।');
+      this.closeModal();
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'repayments');
+      }
+    } catch (err) {
+      alert('কিস্তি মুছে ফেলতে সমস্যা হয়েছে: ' + err.message);
     }
   },
 

@@ -198,16 +198,16 @@ const AdminViews = {
                     <span class="status-badge ${s.verification_status === 'নিশ্চিত' ? 'verified' : (s.verification_status === 'প্রত্যাখ্যাত' ? 'rejected' : 'pending')}">
                       ${s.verification_status}
                     </span>
-                  </td>
                   <td>
-                    ${s.verification_status === 'অপেক্ষমাণ' ? `
-                      <div style="display: flex; gap: 6px;">
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                      ${s.verification_status === 'অপেক্ষমাণ' ? `
                         <button class="btn btn-sm btn-primary" onclick="App.verifyBkashSubmissionAction('${s.id}')">✓ যাচাই ও ক্রেডিট</button>
                         <button class="btn btn-sm btn-danger" onclick="App.rejectBkashSubmissionAction('${s.id}')">✕ বাতিল</button>
-                      </div>
-                    ` : `
-                      <small style="color: #666;">সম্পন্ন (${s.verified_by || 'Admin'})</small>
-                    `}
+                      ` : `
+                        <small style="color: #666;">সম্পন্ন (${s.verified_by || 'Admin'})</small>
+                      `}
+                      <button class="btn btn-sm btn-danger" onclick="App.deleteBkashSubmissionConfirm('${s.id}')" title="সাবমিশনটি মুছে ফেলুন" style="padding: 4px 8px; font-size: 0.78rem;">🗑️ মুছুন</button>
+                    </div>
                   </td>
                 </tr>
               `).join('')}
@@ -260,7 +260,7 @@ const AdminViews = {
                     </span>
                   </td>
                   <td>
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                       <button class="btn btn-sm btn-outline-green" onclick="App.viewApplicationDetails('${a.id}')">পর্যালোচনা</button>
                       ${a.status === 'জমা হয়েছে' || a.status === 'যাচাইাধীন' ? `
                         <button class="btn btn-sm btn-gold" onclick="App.openVerifyModal('${a.id}')">মাঠ যাচাই</button>
@@ -269,6 +269,7 @@ const AdminViews = {
                       ${a.status === 'অনুমোদিত' ? `
                         <button class="btn btn-sm btn-primary" onclick="App.openDisburseModal('${a.id}')">🤝 অর্থ বিতরণ</button>
                       ` : ''}
+                      <button class="btn btn-sm btn-danger" onclick="App.deleteApplicationConfirm('${a.id}', '${(a.applicant_name || '').replace(/'/g, "\\'")}')" title="আবেদনটি মুছে ফেলুন" style="padding: 4px 8px; font-size: 0.78rem;">🗑️ মুছুন</button>
                     </div>
                   </td>
                 </tr>
@@ -374,7 +375,7 @@ const AdminViews = {
                     </span>
                   </td>
                   <td>
-                    <div style="display: flex; gap: 4px;">
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
                       ${l.outstanding_principal > 0 ? `
                         <button class="btn btn-sm btn-gold" onclick="App.openRepayModalForLoan('${l.id}')">ফেরত</button>
                         <button class="btn btn-sm btn-outline" style="color:#333; border-color:#ccc;" onclick="App.openExtendModal('${l.id}')">মেয়াদ বৃদ্ধি</button>
@@ -382,6 +383,8 @@ const AdminViews = {
                         <button class="btn btn-sm btn-outline-green" onclick="App.printDocument('loan_clearance', '${l.id}')">📜 দায়মুক্তি সনদ</button>
                       `}
                       <button class="btn btn-sm btn-outline" style="color:#333;" onclick="App.printDocument('loan_agreement', '${l.id}')">চুক্তিপত্র</button>
+                      <button class="btn btn-sm btn-outline-green" onclick="App.viewLoanRepayments('${l.id}')" title="কিস্তি আদায়ের তালিকা ও সংশোধন">📋 কিস্তি তালিকা</button>
+                      <button class="btn btn-sm btn-danger" onclick="App.deleteLoanConfirm('${l.id}', '${(l.applicant_name || '').replace(/'/g, "\\'")}', ${l.original_principal})" title="এই ঋণ ও সংশ্লিষ্ট সকল এন্ট্রি মুছে ফেলুন" style="padding: 4px 8px; font-size: 0.78rem;">🗑️ ঋণ মুছুন</button>
                     </div>
                   </td>
                 </tr>
