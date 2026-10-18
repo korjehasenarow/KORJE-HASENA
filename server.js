@@ -1436,6 +1436,144 @@ app.post('/api/donations/:id/verify', (req, res) => {
   }
 });
 
+// Get single donation
+app.get('/api/donations/:id', (req, res) => {
+  try {
+    const d = db.get(`
+      SELECT d.*, f.name_bn as fund_name, fa.name_bn as account_name
+      FROM donations d
+      LEFT JOIN funds f ON d.fund_id = f.id
+      LEFT JOIN financial_accounts fa ON d.financial_account_id = fa.id
+      WHERE d.id = ?
+    `, [req.params.id]);
+    if (!d) return res.status(404).json({ success: false, message: 'অনুদান খুঁজে পাওয়া যায়নি।' });
+    res.json({ success: true, data: d });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Update / Correct Donation
+app.put('/api/donations/:id', (req, res) => {
+  try {
+    const donationId = req.params.id;
+    const existing = db.get('SELECT * FROM donations WHERE id = ?', [donationId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'অনুদান খুঁজে পাওয়া যায়নি।' });
+    }
+
+    const b = req.body;
+    const newAmount = b.amount !== undefined ? parseFloat(b.amount) : existing.amount;
+    const newDate = b.date || existing.date;
+    const newFundId = b.fund_id !== undefined ? parseInt(b.fund_id, 10) : existing.fund_id;
+    const newAccountId = b.financial_account_id !== undefined ? parseInt(b.financial_account_id, 10) : existing.financial_account_id;
+    const newDonorName = (b.donor_name || existing.donor_name).trim();
+    const newDonorMobile = (b.donor_mobile !== undefined ? b.donor_mobile : (existing.donor_mobile || '')).toString().trim();
+    const newPaymentMethod = b.payment_method || existing.payment_method;
+    const newTxRef = b.transaction_reference !== undefined ? b.transaction_reference : existing.transaction_reference;
+    const newNotes = b.notes !== undefined ? b.notes : existing.notes;
+    const donorId = b.donor_id || existing.donor_id;
+
+    db.transaction(({ run }) => {
+      // 1. Update donations table
+      run(`
+        UPDATE donations
+        SET donor_id = ?, donor_name = ?, donor_mobile = ?, amount = ?,
+            fund_id = ?, financial_account_id = ?, payment_method = ?,
+            transaction_reference = ?, date = ?, notes = ?
+        WHERE id = ?
+      `, [
+        donorId, newDonorName, newDonorMobile, newAmount,
+        newFundId, newAccountId, newPaymentMethod,
+        newTxRef, newDate, newNotes, donationId
+      ]);
+
+      // 2. Synchronize linked transaction if confirmed
+      if (existing.status === 'নিশ্চিত') {
+        const desc = `অনুদান প্রাপ্তি: ${newDonorName} (${newPaymentMethod})`;
+        const linkedTrx = db.get(`
+          SELECT id FROM transactions
+          WHERE (related_entity_type = 'donations' AND related_entity_id = ?)
+             OR (reference_no = ?)
+          LIMIT 1
+        `, [donationId, existing.receipt_number]);
+
+        if (linkedTrx) {
+          run(`
+            UPDATE transactions
+            SET date = ?, account_id = ?, fund_id = ?, amount = ?, description_bn = ?
+            WHERE id = ?
+          `, [newDate, newAccountId, newFundId, newAmount, desc, linkedTrx.id]);
+        } else {
+          const trxId = 'TRX-' + Date.now().toString().slice(-6);
+          run(`
+            INSERT INTO transactions (
+              id, date, type, account_id, fund_id, amount, direction,
+              related_entity_type, related_entity_id, reference_no, description_bn,
+              recorded_by, status, created_at
+            ) VALUES (?, ?, 'DONATION', ?, ?, ?, 'IN', 'donations', ?, ?, ?, ?, 'verified', datetime('now'))
+          `, [
+            trxId, newDate, newAccountId, newFundId, newAmount, donationId,
+            existing.receipt_number, desc, b.user_name || 'হিসাবরক্ষক'
+          ]);
+        }
+      }
+    });
+
+    logAudit(b.user_id, b.user_name, 'UPDATE', 'donations', donationId, `Updated donation: ৳${existing.amount} -> ৳${newAmount} (${newDonorName})`, req);
+    res.json({
+      success: true,
+      message: 'অনুদানের তথ্য ও ক্যাশবুক এন্ট্রি সফলভাবে সংশোধন করা হয়েছে।',
+      receipt: buildDonationReceiptPayload(donationId)
+    });
+  } catch (err) {
+    console.error('[DONATION UPDATE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete Donation
+app.delete('/api/donations/:id', (req, res) => {
+  try {
+    if (!isSuperAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'অনুমতি নেই। শুধুমাত্র অ্যাডমিন এটি মুছতে পারবেন।' });
+    }
+
+    const donationId = req.params.id;
+    const existing = db.get('SELECT * FROM donations WHERE id = ?', [donationId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'অনুদান খুঁজে পাওয়া যায়নি।' });
+    }
+
+    db.transaction(({ run }) => {
+      // 1. Delete linked transaction in cashbook ledger
+      run(`
+        DELETE FROM transactions
+        WHERE (related_entity_type = 'donations' AND related_entity_id = ?)
+           OR (reference_no = ?)
+      `, [donationId, existing.receipt_number]);
+
+      // 2. If it was linked to a bKash payment submission, reset its status
+      if (existing.transaction_reference) {
+        run(`
+          UPDATE payment_submissions
+          SET status = 'বিবেচনাধীন'
+          WHERE transaction_id = ?
+        `, [existing.transaction_reference]);
+      }
+
+      // 3. Delete donation record
+      run('DELETE FROM donations WHERE id = ?', [donationId]);
+    });
+
+    logAudit(req.query.user_id || req.headers['x-user-id'] || 'admin', req.query.user_name || 'Admin', 'DELETE', 'donations', donationId, `Deleted donation: ${existing.receipt_number} (৳${existing.amount} - ${existing.donor_name})`, req);
+    res.json({ success: true, message: 'অনুদান এবং সংশ্লিষ্ট ক্যাশবুক লেনদেন সফলভাবে মুছে ফেলা হয়েছে।' });
+  } catch (err) {
+    console.error('[DONATION DELETE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 7. bKash Submissions & Verification
 app.get('/api/bkash-submissions', (req, res) => {
   try {
@@ -2104,6 +2242,96 @@ app.post('/api/expenses', (req, res) => {
   }
 });
 
+// Get single expense
+app.get('/api/expenses/:id', (req, res) => {
+  try {
+    const exp = db.get(`
+      SELECT e.*, fa.name_bn as account_name
+      FROM expenses e
+      LEFT JOIN financial_accounts fa ON e.payment_account_id = fa.id
+      WHERE e.id = ?
+    `, [req.params.id]);
+    if (!exp) return res.status(404).json({ success: false, message: 'ব্যয়ের তথ্য পাওয়া যায়নি।' });
+    res.json({ success: true, data: exp });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Update Expense
+app.put('/api/expenses/:id', (req, res) => {
+  try {
+    const expId = req.params.id;
+    const existing = db.get('SELECT * FROM expenses WHERE id = ?', [expId]);
+    if (!existing) return res.status(404).json({ success: false, message: 'ব্যয়ের তথ্য পাওয়া যায়নি।' });
+
+    const b = req.body;
+    const newAmount = b.amount !== undefined ? parseFloat(b.amount) : existing.amount;
+    const newDate = b.date || existing.date;
+    const newCategory = b.category || existing.category;
+    const newAccountId = b.payment_account_id !== undefined ? parseInt(b.payment_account_id, 10) : existing.payment_account_id;
+    const newRecipient = b.recipient_vendor || existing.recipient_vendor;
+    const newDesc = b.description !== undefined ? b.description : existing.description;
+
+    db.transaction(({ run }) => {
+      run(`
+        UPDATE expenses
+        SET date = ?, category = ?, amount = ?, payment_account_id = ?,
+            recipient_vendor = ?, description = ?
+        WHERE id = ?
+      `, [newDate, newCategory, newAmount, newAccountId, newRecipient, newDesc, expId]);
+
+      // Update linked transaction
+      run(`
+        UPDATE transactions
+        SET date = ?, account_id = ?, amount = ?,
+            description_bn = ?
+        WHERE (related_entity_type = 'expenses' AND related_entity_id = ?)
+           OR (reference_no = ?)
+      `, [
+        newDate, newAccountId, newAmount,
+        `ব্যয়: ${newCategory} - ${newRecipient} (${newDesc})`,
+        expId, existing.voucher_receipt_number
+      ]);
+    });
+
+    logAudit(b.user_id, b.user_name, 'UPDATE', 'expenses', expId, `Updated expense: ৳${existing.amount} -> ৳${newAmount} (${newCategory})`, req);
+    res.json({ success: true, message: 'ব্যয়ের তথ্য ও ক্যাশবুক এন্ট্রি সফলভাবে সংশোধন করা হয়েছে।' });
+  } catch (err) {
+    console.error('[EXPENSE UPDATE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete Expense
+app.delete('/api/expenses/:id', (req, res) => {
+  try {
+    if (!isSuperAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'অনুমতি নেই। শুধুমাত্র অ্যাডমিন এটি মুছতে পারবেন।' });
+    }
+
+    const expId = req.params.id;
+    const existing = db.get('SELECT * FROM expenses WHERE id = ?', [expId]);
+    if (!existing) return res.status(404).json({ success: false, message: 'ব্যয়ের তথ্য পাওয়া যায়নি।' });
+
+    db.transaction(({ run }) => {
+      run(`
+        DELETE FROM transactions
+        WHERE (related_entity_type = 'expenses' AND related_entity_id = ?)
+           OR (reference_no = ?)
+      `, [expId, existing.voucher_receipt_number]);
+
+      run('DELETE FROM expenses WHERE id = ?', [expId]);
+    });
+
+    logAudit(req.query.user_id || req.headers['x-user-id'] || 'admin', req.query.user_name || 'Admin', 'DELETE', 'expenses', expId, `Deleted expense: ${existing.voucher_receipt_number} (৳${existing.amount} - ${existing.category})`, req);
+    res.json({ success: true, message: 'ব্যয়ের রেকর্ড এবং সংশ্লিষ্ট ক্যাশবুক এন্ট্রি সফলভাবে মুছে ফেলা হয়েছে।' });
+  } catch (err) {
+    console.error('[EXPENSE DELETE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // =============================================================
 // 12.1 Non-Repayable Welfare Grants & Humanitarian Relief Aid
 // (এককালীন অনুদান, মানবিক সহায়তা, ঘর নির্মাণ, বাজার, চিকিৎসা ও দুর্যোগ ত্রাণ)
@@ -2505,6 +2733,155 @@ app.get('/api/funds', (req, res) => {
     }
     res.json({ success: true, data: funds });
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// =============================================================
+// Unified Transactions Ledger (Cashbook) Operations
+// =============================================================
+
+// Get single transaction with linked entity
+app.get('/api/transactions/:id', (req, res) => {
+  try {
+    const trx = db.get(`
+      SELECT t.*, fa.name_bn as account_name, f.name_bn as fund_name
+      FROM transactions t
+      LEFT JOIN financial_accounts fa ON t.account_id = fa.id
+      LEFT JOIN funds f ON t.fund_id = f.id
+      WHERE t.id = ?
+    `, [req.params.id]);
+    if (!trx) return res.status(404).json({ success: false, message: 'লেনদেন খুঁজে পাওয়া যায়নি।' });
+
+    let linkedData = null;
+    if (trx.related_entity_type === 'donations' && trx.related_entity_id) {
+      linkedData = db.get('SELECT * FROM donations WHERE id = ?', [trx.related_entity_id]);
+    } else if (trx.related_entity_type === 'expenses' && trx.related_entity_id) {
+      linkedData = db.get('SELECT * FROM expenses WHERE id = ?', [trx.related_entity_id]);
+    } else if (trx.related_entity_type === 'welfare_grants' && trx.related_entity_id) {
+      linkedData = db.get('SELECT * FROM welfare_grants WHERE id = ?', [trx.related_entity_id]);
+    } else if (trx.reference_no && trx.reference_no.startsWith('REC-DON-')) {
+      linkedData = db.get('SELECT * FROM donations WHERE receipt_number = ?', [trx.reference_no]);
+    } else if (trx.reference_no && trx.reference_no.startsWith('VOUCH-')) {
+      linkedData = db.get('SELECT * FROM expenses WHERE voucher_receipt_number = ?', [trx.reference_no]);
+    }
+
+    res.json({ success: true, data: { ...trx, linkedData } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Update Transaction (Direct cashbook edit)
+app.put('/api/transactions/:id', (req, res) => {
+  try {
+    const trxId = req.params.id;
+    const existing = db.get('SELECT * FROM transactions WHERE id = ?', [trxId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'লেনদেন খুঁজে পাওয়া যায়নি।' });
+    }
+
+    const b = req.body;
+    const newAmount = b.amount !== undefined ? parseFloat(b.amount) : existing.amount;
+    const newDate = b.date || existing.date;
+    const newAccountId = b.account_id !== undefined ? parseInt(b.account_id, 10) : existing.account_id;
+    const newFundId = b.fund_id ? parseInt(b.fund_id, 10) : existing.fund_id;
+    const newDesc = b.description_bn || existing.description_bn;
+
+    db.transaction(({ run }) => {
+      run(`
+        UPDATE transactions
+        SET date = ?, account_id = ?, fund_id = ?, amount = ?, description_bn = ?
+        WHERE id = ?
+      `, [newDate, newAccountId, newFundId, newAmount, newDesc, trxId]);
+
+      // Cascade update to linked donation
+      if (existing.related_entity_type === 'donations' && existing.related_entity_id) {
+        run(`
+          UPDATE donations
+          SET date = ?, amount = ?, fund_id = ?, financial_account_id = ?
+          WHERE id = ?
+        `, [newDate, newAmount, newFundId, newAccountId, existing.related_entity_id]);
+      } else if (existing.reference_no && existing.reference_no.startsWith('REC-DON-')) {
+        run(`
+          UPDATE donations
+          SET date = ?, amount = ?, fund_id = ?, financial_account_id = ?
+          WHERE receipt_number = ?
+        `, [newDate, newAmount, newFundId, newAccountId, existing.reference_no]);
+      }
+      // Cascade update to linked expense
+      else if (existing.related_entity_type === 'expenses' && existing.related_entity_id) {
+        run(`
+          UPDATE expenses
+          SET date = ?, amount = ?, payment_account_id = ?, description = ?
+          WHERE id = ?
+        `, [newDate, newAmount, newAccountId, newDesc, existing.related_entity_id]);
+      } else if (existing.reference_no && existing.reference_no.startsWith('VOUCH-')) {
+        run(`
+          UPDATE expenses
+          SET date = ?, amount = ?, payment_account_id = ?, description = ?
+          WHERE voucher_receipt_number = ?
+        `, [newDate, newAmount, newAccountId, newDesc, existing.reference_no]);
+      }
+    });
+
+    logAudit(b.user_id, b.user_name, 'UPDATE', 'transactions', trxId, `Updated transaction ৳${existing.amount} -> ৳${newAmount}`, req);
+    res.json({ success: true, message: 'লেনদেন সফলভাবে সংশোধন করা হয়েছে।' });
+  } catch (err) {
+    console.error('[TRANSACTION UPDATE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete Transaction (Cascades to linked records)
+app.delete('/api/transactions/:id', (req, res) => {
+  try {
+    if (!isSuperAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'অনুমতি নেই। শুধুমাত্র অ্যাডমিন এটি মুছতে পারবেন।' });
+    }
+
+    const trxId = req.params.id;
+    const existing = db.get('SELECT * FROM transactions WHERE id = ?', [trxId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'লেনদেন খুঁজে পাওয়া যায়নি।' });
+    }
+
+    db.transaction(({ run }) => {
+      // 1. If linked to donation, delete the donation record
+      if (existing.related_entity_type === 'donations' && existing.related_entity_id) {
+        const don = db.get('SELECT transaction_reference FROM donations WHERE id = ?', [existing.related_entity_id]);
+        if (don && don.transaction_reference) {
+          run(`UPDATE payment_submissions SET status = 'বিবেচনাধীন' WHERE transaction_id = ?`, [don.transaction_reference]);
+        }
+        run('DELETE FROM donations WHERE id = ?', [existing.related_entity_id]);
+      } else if (existing.reference_no && existing.reference_no.startsWith('REC-DON-')) {
+        const don = db.get('SELECT transaction_reference FROM donations WHERE receipt_number = ?', [existing.reference_no]);
+        if (don && don.transaction_reference) {
+          run(`UPDATE payment_submissions SET status = 'বিবেচনাধীন' WHERE transaction_id = ?`, [don.transaction_reference]);
+        }
+        run('DELETE FROM donations WHERE receipt_number = ?', [existing.reference_no]);
+      }
+
+      // 2. If linked to expense, delete expense record
+      if (existing.related_entity_type === 'expenses' && existing.related_entity_id) {
+        run('DELETE FROM expenses WHERE id = ?', [existing.related_entity_id]);
+      } else if (existing.reference_no && existing.reference_no.startsWith('VOUCH-')) {
+        run('DELETE FROM expenses WHERE voucher_receipt_number = ?', [existing.reference_no]);
+      }
+
+      // 3. If linked to welfare_grants, delete welfare grant
+      if (existing.related_entity_type === 'welfare_grants' && existing.related_entity_id) {
+        run('DELETE FROM welfare_grants WHERE id = ?', [existing.related_entity_id]);
+      }
+
+      // 4. Delete transaction row itself
+      run('DELETE FROM transactions WHERE id = ?', [trxId]);
+    });
+
+    logAudit(req.query.user_id || req.headers['x-user-id'] || 'admin', req.query.user_name || 'Admin', 'DELETE', 'transactions', trxId, `Deleted transaction ${trxId} (৳${existing.amount} - ${existing.description_bn})`, req);
+    res.json({ success: true, message: 'লেনদেন এবং সংশ্লিষ্ট সকল রেকর্ড সফলভাবে মুছে ফেলা হয়েছে।' });
+  } catch (err) {
+    console.error('[TRANSACTION DELETE ERROR]', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

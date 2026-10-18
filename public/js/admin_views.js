@@ -109,7 +109,7 @@ const AdminViews = {
                 <th>পরিমাণ</th>
                 <th>পদ্ধতি/TrxID</th>
                 <th>স্ট্যাটাস</th>
-                <th>রসিদ প্রিন্ট</th>
+                <th style="text-align: center; min-width: 200px;">অ্যাকশন ও রসিদ</th>
               </tr>
             </thead>
             <tbody>
@@ -126,14 +126,22 @@ const AdminViews = {
                   <td>
                     <span class="status-badge ${d.status === 'নিশ্চিত' ? 'verified' : 'pending'}">${d.status}</span>
                   </td>
-                  <td>
-                    ${d.status === 'নিশ্চিত' ? `
-                      <button class="btn btn-sm btn-outline-green" onclick="App.showDonationReceiptModal('${d.id}')" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 700;">
-                        <span>🧾</span> রসিদ ও শেয়ার
+                  <td style="white-space: nowrap; text-align: center;">
+                    <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                      ${d.status === 'নিশ্চিত' ? `
+                        <button class="btn btn-sm btn-outline-green" onclick="App.showDonationReceiptModal('${d.id}')" style="display: inline-flex; align-items: center; gap: 3px; font-weight: 700; padding: 4px 7px; font-size: 0.78rem;" title="রসিদ দেখুন ও প্রিন্ট করুন">
+                          <span>🧾</span> রসিদ
+                        </button>
+                      ` : `
+                        <button class="btn btn-sm btn-gold" onclick="App.verifyDonationAction('${d.id}')" style="padding: 4px 7px; font-size: 0.78rem;">✓ যাচাই</button>
+                      `}
+                      <button class="btn btn-sm btn-outline-green" onclick="App.openEditDonationModal('${d.id}')" style="padding: 4px 7px; font-size: 0.78rem; background: #e8f5ec; color: #075B3B; border-color: #075B3B;" title="অনুদানের তথ্য সংশোধন / এডিট করুন">
+                        ✏️ সংশোধন
                       </button>
-                    ` : `
-                      <button class="btn btn-sm btn-gold" onclick="App.verifyDonationAction('${d.id}')">✓ যাচাই</button>
-                    `}
+                      <button class="btn btn-sm btn-danger" onclick="App.deleteDonationConfirm('${d.id}', '${d.receipt_number}', ${d.amount})" style="padding: 4px 7px; font-size: 0.78rem;" title="অনুদান ও সংশ্লিষ্ট ক্যাশবুক এন্ট্রি মুছে ফেলুন">
+                        🗑️ মুছুন
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `).join('')}
@@ -534,6 +542,7 @@ const AdminViews = {
                 <th>খরচ (- প্রদান)</th>
                 <th>রেফারেন্স</th>
                 <th>বিবরণ</th>
+                <th style="text-align: center; min-width: 140px;">অ্যাকশন (Action)</th>
               </tr>
             </thead>
             <tbody>
@@ -555,9 +564,19 @@ const AdminViews = {
                   </td>
                   <td>${t.reference_no || 'N/A'}</td>
                   <td>${t.description_bn}</td>
+                  <td style="text-align: center; white-space: nowrap;">
+                    <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center;">
+                      <button class="btn btn-sm btn-outline-green" style="padding: 4px 8px; font-size: 0.8rem; background: #e8f5ec; color: #075B3B; border-color: #075B3B;" onclick="App.openEditTransaction('${t.id}')" title="লেনদেন বা সংশ্লিষ্ট রেকর্ড সংশোধন করুন">
+                        ✏️ সংশোধন
+                      </button>
+                      <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="App.deleteTransactionConfirm('${t.id}', '${t.type}', ${t.amount})" title="এই লেনদেন এবং সংশ্লিষ্ট রেকর্ড মুছে ফেলুন">
+                        🗑️ মুছুন
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               `).join('')}
-              ${transactions.length === 0 ? `<tr><td colspan="8" style="text-align: center; color: #777;">কোনো লেনদেন পাওয়া যায়নি।</td></tr>` : ''}
+              ${transactions.length === 0 ? `<tr><td colspan="9" style="text-align: center; color: #777;">কোনো লেনদেন পাওয়া যায়নি।</td></tr>` : ''}
             </tbody>
           </table>
         </div>
@@ -585,6 +604,7 @@ const AdminViews = {
                 <th>পরিমাণ</th>
                 <th>বিবরণ</th>
                 <th>অনুমোদনকারী</th>
+                <th style="text-align: center; min-width: 140px;">অ্যাকশন (Action)</th>
               </tr>
             </thead>
             <tbody>
@@ -598,9 +618,19 @@ const AdminViews = {
                   <td style="font-weight: 800; color: #C62828;">৳ ${bnNum(e.amount)}</td>
                   <td>${e.description}</td>
                   <td>${e.approved_by || 'হিসাব শাখা'}</td>
+                  <td style="text-align: center; white-space: nowrap;">
+                    <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center;">
+                      <button class="btn btn-sm btn-outline-green" onclick="App.openEditExpenseModal('${e.id}')" style="padding: 4px 8px; font-size: 0.8rem; background: #e8f5ec; color: #075B3B; border-color: #075B3B;" title="ব্যয় সংশোধন করুন">
+                        ✏️ সংশোধন
+                      </button>
+                      <button class="btn btn-sm btn-danger" onclick="App.deleteExpenseConfirm('${e.id}', '${e.category}', ${e.amount})" style="padding: 4px 8px; font-size: 0.8rem;" title="ব্যয় মুছে ফেলুন">
+                        🗑️ মুছুন
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               `).join('')}
-              ${expenses.length === 0 ? `<tr><td colspan="8" style="text-align: center; color: #777;">কোনো ব্যয়ের রেকর্ড নেই।</td></tr>` : ''}
+              ${expenses.length === 0 ? `<tr><td colspan="9" style="text-align: center; color: #777;">কোনো ব্যয়ের রেকর্ড নেই।</td></tr>` : ''}
             </tbody>
           </table>
         </div>

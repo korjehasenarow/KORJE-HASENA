@@ -69,8 +69,16 @@ const API = {
 
   // Donations
   getDonations: (params = '') => API.request('/api/donations' + (params ? '?' + params : '')),
+  getDonation: (id) => API.request(`/api/donations/${id}`),
   recordDonation: (data) => API.request('/api/donations', { method: 'POST', body: JSON.stringify(data) }),
+  updateDonation: (id, data) => API.request(`/api/donations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteDonation: (id) => API.request(`/api/donations/${id}`, { method: 'DELETE' }),
   verifyDonation: (id, data) => API.request(`/api/donations/${id}/verify`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Transactions (Cashbook Unified Ledger)
+  getTransaction: (id) => API.request(`/api/transactions/${id}`),
+  updateTransaction: (id, data) => API.request(`/api/transactions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTransaction: (id) => API.request(`/api/transactions/${id}`, { method: 'DELETE' }),
 
   // bKash Submissions
   getBkashSubmissions: () => API.request('/api/bkash-submissions'),
@@ -95,7 +103,10 @@ const API = {
 
   // Expenses
   getExpenses: () => API.request('/api/expenses'),
+  getExpense: (id) => API.request(`/api/expenses/${id}`),
   createExpense: (data) => API.request('/api/expenses', { method: 'POST', body: JSON.stringify(data) }),
+  updateExpense: (id, data) => API.request(`/api/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteExpense: (id) => API.request(`/api/expenses/${id}`, { method: 'DELETE' }),
 
   // Welfare & Humanitarian Relief Grants (এককালীন সহায়তা ও ত্রাণ)
   getWelfareGrants: (params = '') => API.request('/api/welfare-grants' + (params ? '?' + params : '')),

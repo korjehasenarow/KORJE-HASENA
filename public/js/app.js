@@ -614,9 +614,11 @@ const App = {
       `;
     } else if (type === 'donation') {
       const donors = this.state.donors || [];
-      modalTitle.textContent = '💵 নতুন অনুদান গ্রহণ ও রসিদ তৈরি';
+      const isEditDon = !!data.id;
+      modalTitle.textContent = isEditDon ? `✏️ অনুদান সংশোধন (Correction) — রসিদ: ${data.receipt_number || data.id}` : '💵 নতুন অনুদান গ্রহণ ও রসিদ তৈরি';
       modalBody.innerHTML = `
         <form id="modalDonationForm" onsubmit="App.handleRecordDonation(event)">
+          <input type="hidden" name="id" value="${data.id || ''}">
           <!-- দাতা নির্বাচন ড্রপডাউন -->
           <div class="form-group" style="background: #f4faf6; padding: 12px 14px; border-radius: 6px; border: 1.5px solid #075b3b33; margin-bottom: 16px;">
             <label style="font-weight: 700; color: #075B3B; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -649,7 +651,7 @@ const App = {
             </div>
             <div class="form-group">
               <label>অনুদানের পরিমাণ (৳) <span class="required">*</span></label>
-              <input type="number" name="amount" class="form-control" min="10" required placeholder="0.00" value="${data.amount || ''}">
+              <input type="number" name="amount" class="form-control" min="10" step="0.01" required placeholder="0.00" value="${data.amount || ''}">
             </div>
             <div class="form-group">
               <label>তারিখ <span class="required">*</span></label>
@@ -665,7 +667,7 @@ const App = {
             <div class="form-group">
               <label>জমার হিসাব <span class="required">*</span></label>
               <select name="financial_account_id" class="form-control" required>
-                ${(this.state.accounts && this.state.accounts.length > 0) ? this.state.accounts.map(a => `<option value="${a.id}" ${data.financial_account_id == a.id ? 'selected' : ''}>${a.account_name_bn} (বর্তমান ব্যালেন্স: ৳ ${bnNum(a.current_balance)})</option>`).join('') : `
+                ${(this.state.accounts && this.state.accounts.length > 0) ? this.state.accounts.map(a => `<option value="${a.id}" ${(data.financial_account_id == a.id) ? 'selected' : ''}>${a.name_bn || a.account_name_bn} (বর্তমান ব্যালেন্স: ৳ ${bnNum(a.current_balance)})</option>`).join('') : `
                   <option value="1">হাতে নগদ (Cash)</option>
                   <option value="2">সোনালী ব্যাংক পিএলসি</option>
                   <option value="3">বিকাশ / নগদ / রকেট হিসাব (01966442769)</option>
@@ -675,17 +677,21 @@ const App = {
             <div class="form-group">
               <label>পদ্ধতি</label>
               <select name="payment_method" class="form-control">
-                <option value="নগদ">নগদ</option>
-                <option value="bKash / Nagad / Rocket Send Money">বিকাশ / নগদ / রকেট Send Money</option>
-                <option value="ব্যাংক ডিপোজিট">ব্যাংক ডিপোজিট</option>
+                <option value="নগদ" ${data.payment_method === 'নগদ' ? 'selected' : ''}>নগদ</option>
+                <option value="bKash / Nagad / Rocket Send Money" ${data.payment_method === 'bKash / Nagad / Rocket Send Money' ? 'selected' : ''}>বিকাশ / নগদ / রকেট Send Money</option>
+                <option value="ব্যাংক ডিপোজিট" ${data.payment_method === 'ব্যাংক ডিপোজিট' ? 'selected' : ''}>ব্যাংক ডিপোজিট</option>
               </select>
             </div>
             <div class="form-group">
               <label>রেফারেন্স / TrxID</label>
-              <input type="text" name="transaction_reference" class="form-control" placeholder="যদি থাকে (যেমন: TrxID)">
+              <input type="text" name="transaction_reference" class="form-control" placeholder="যদি থাকে (যেমন: TrxID)" value="${data.transaction_reference || ''}">
             </div>
           </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;">✓ অনুদান নিশ্চিত করুন ও রসিদ তৈরি করুন</button>
+          <div class="form-group">
+            <label>অতিরিক্ত নোট / বিবরণ (ঐচ্ছিক)</label>
+            <input type="text" name="notes" class="form-control" placeholder="কোনো বিশেষ মন্তব্য থাকলে লিখুন" value="${data.notes || ''}">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;">${isEditDon ? '💾 সংশোধন সংরক্ষণ করুন (Update Donation)' : '✓ অনুদান নিশ্চিত করুন ও রসিদ তৈরি করুন'}</button>
         </form>
       `;
     } else if (type === 'repayment') {
@@ -737,43 +743,51 @@ const App = {
         </form>
       `;
     } else if (type === 'expense') {
-      modalTitle.textContent = '🧾 নতুন অফিস বা পরিচালন ব্যয় এন্ট্রি';
+      const isEditExp = !!data.id;
+      modalTitle.textContent = isEditExp ? `✏️ ব্যয় ভাউচার সংশোধন — ভাউচার: ${data.voucher_receipt_number || data.id}` : '🧾 নতুন অফিস বা পরিচালন ব্যয় এন্ট্রি';
       modalBody.innerHTML = `
         <form id="modalExpenseForm" onsubmit="App.handleRecordExpense(event)">
+          <input type="hidden" name="id" value="${data.id || ''}">
           <div class="form-grid">
+            <div class="form-group">
+              <label>তারিখ <span class="required">*</span></label>
+              <input type="date" name="date" class="form-control" value="${data.date || getDhakaDateStr()}" required>
+            </div>
             <div class="form-group">
               <label>ব্যয়ের খাত / ক্যাটাগরি <span class="required">*</span></label>
               <select name="category" class="form-control" required>
-                <option value="অফিস খরচ">অফিস খরচ</option>
-                <option value="কার্যক্রম/প্রকল্প খরচ">কার্যক্রম/প্রকল্প খরচ</option>
-                <option value="যাতায়াত ও পরিবহন">যাতায়াত ও পরিবহন</option>
-                <option value="মুদ্রণ ও স্টেশনারি">মুদ্রণ ও স্টেশনারি</option>
-                <option value="যোগাযোগ ও ইন্টারনেট">যোগাযোগ ও ইন্টারনেট</option>
-                <option value="অন্যান্য ব্যয়">অন্যান্য ব্যয়</option>
+                <option value="অফিস খরচ" ${data.category === 'অফিস খরচ' ? 'selected' : ''}>অফিস খরচ</option>
+                <option value="কার্যক্রম/প্রকল্প খরচ" ${data.category === 'কার্যক্রম/প্রকল্প খরচ' ? 'selected' : ''}>কার্যক্রম/প্রকল্প খরচ</option>
+                <option value="যাতায়াত ও পরিবহন" ${data.category === 'যাতায়াত ও পরিবহন' ? 'selected' : ''}>যাতায়াত ও পরিবহন</option>
+                <option value="মুদ্রণ ও স্টেশনারি" ${data.category === 'মুদ্রণ ও স্টেশনারি' ? 'selected' : ''}>মুদ্রণ ও স্টেশনারি</option>
+                <option value="যোগাযোগ ও ইন্টারনেট" ${data.category === 'যোগাযোগ ও ইন্টারনেট' ? 'selected' : ''}>যোগাযোগ ও ইন্টারনেট</option>
+                <option value="অন্যান্য ব্যয়" ${data.category === 'অন্যান্য ব্যয়' ? 'selected' : ''}>অন্যান্য ব্যয়</option>
               </select>
             </div>
             <div class="form-group">
               <label>টাকার পরিমাণ (৳) <span class="required">*</span></label>
-              <input type="number" name="amount" class="form-control" min="1" required>
+              <input type="number" name="amount" class="form-control" min="1" step="0.01" value="${data.amount || ''}" required>
             </div>
             <div class="form-group">
               <label>প্রাপক ব্যক্তি / প্রতিষ্ঠান (ভেন্ডর) <span class="required">*</span></label>
-              <input type="text" name="recipient_vendor" class="form-control" required>
+              <input type="text" name="recipient_vendor" class="form-control" value="${data.recipient_vendor || ''}" required>
             </div>
             <div class="form-group">
               <label>পরিশোধের হিসাব <span class="required">*</span></label>
               <select name="payment_account_id" class="form-control" required>
-                <option value="1">হাতে নগদ (Cash in Hand)</option>
-                <option value="2">সোনালী ব্যাংক পিএলসি</option>
-                <option value="3">বিকাশ হিসাব</option>
+                ${(this.state.accounts && this.state.accounts.length > 0) ? this.state.accounts.map(a => `<option value="${a.id}" ${data.payment_account_id == a.id ? 'selected' : ''}>${a.name_bn || a.account_name_bn} (ব্যালেন্স: ৳ ${bnNum(a.current_balance)})</option>`).join('') : `
+                  <option value="1">হাতে নগদ (Cash in Hand)</option>
+                  <option value="2">সোনালী ব্যাংক পিএলসি</option>
+                  <option value="3">বিকাশ হিসাব</option>
+                `}
               </select>
             </div>
           </div>
           <div class="form-group">
-            <label>ব্যয়ের বিস্তারিত বিবরণ</label>
-            <textarea name="description" class="form-control" required></textarea>
+            <label>ব্যয়ের বিস্তারিত বিবরণ <span class="required">*</span></label>
+            <textarea name="description" class="form-control" required>${data.description || ''}</textarea>
           </div>
-          <button type="submit" class="btn btn-danger" style="width:100%;">ব্যয় অনুমোদন ও লিপিবদ্ধ করুন</button>
+          <button type="submit" class="btn btn-danger" style="width:100%;">${isEditExp ? '💾 ব্যয় সংশোধন সংরক্ষণ করুন' : 'ব্যয় অনুমোদন ও লিপিবদ্ধ করুন'}</button>
         </form>
       `;
     } else if (type === 'transfer') {
@@ -2984,6 +2998,30 @@ const App = {
       if (match) data.donor_id = match.id;
     }
 
+    // Edit/Correction Mode
+    if (data.id) {
+      try {
+        const res = await API.updateDonation(data.id, data);
+        this.closeModal();
+        await this.loadInitialData();
+        alert('✅ অনুদান ও সংশ্লিষ্ট ক্যাশবুক এন্ট্রি সফলভাবে সংশোধন করা হয়েছে!');
+        if (this.state.currentView === 'admin') {
+          await this.navigateAdmin(this.state.adminView || 'donations');
+        }
+        if (res.receipt) {
+          this.showDonationReceiptModal(res.receipt);
+        }
+      } catch (err) {
+        alert(`সংশোধন ব্যর্থ হয়েছে: ${err.message}`);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = origBtnText;
+        }
+      }
+      return;
+    }
+
     try {
       const res = await API.recordDonation(data);
       this.closeModal();
@@ -3013,6 +3051,202 @@ const App = {
     }
   },
 
+  async openEditDonationModal(id) {
+    try {
+      let donation = (this.state.donations || []).find(d => d.id === id);
+      if (!donation) {
+        const res = await API.getDonation(id);
+        if (res && res.success) donation = res.data;
+      }
+      if (!donation) {
+        alert('অনুদানের তথ্য খুঁজে পাওয়া যায়নি।');
+        return;
+      }
+      this.openModal('donation', donation);
+    } catch (err) {
+      alert('অনুদানের তথ্য আনতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async deleteDonationConfirm(id, receiptNumber, amount) {
+    const formattedAmount = (typeof formatBDT === 'function') ? formatBDT(amount) : ('৳ ' + amount);
+    const confirmed = confirm(`⚠️ আপনি কি নিশ্চিতভাবে এই অনুদানটি (${receiptNumber || id}, পরিমাণ: ${formattedAmount}) মুছে ফেলতে চান?\n\nএটি মুছে ফেললে ক্যাশবুকের সংশ্লিষ্ট ট্রানজ্যাকশন এবং একাউন্ট ব্যালেন্স থেকেও স্থায়ীভাবে বাদ যাবে।`);
+    if (!confirmed) return;
+
+    try {
+      const res = await API.deleteDonation(id);
+      alert(res.message || 'অনুদান সফলভাবে মুছে ফেলা হয়েছে।');
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'donations');
+      } else {
+        this.render();
+      }
+    } catch (err) {
+      alert('অনুদান মুছে ফেলতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async verifyDonationAction(id) {
+    try {
+      const res = await API.verifyDonation(id, {
+        user_id: this.state.user?.id,
+        user_name: this.state.user?.full_name_bn
+      });
+      alert(res.message || 'অনুদান যাচাই সম্পন্ন হয়েছে!');
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'donations');
+      }
+    } catch (err) {
+      alert('যাচাই ব্যর্থ: ' + err.message);
+    }
+  },
+
+  async openEditTransaction(trxId) {
+    try {
+      const res = await API.getTransaction(trxId);
+      if (!res || !res.success) throw new Error(res?.message || 'লেনদেন পাওয়া যায়নি।');
+      const trx = res.data;
+
+      // If linked to a donation, open edit donation modal
+      if (trx.related_entity_type === 'donations' && trx.linkedData) {
+        return this.openModal('donation', trx.linkedData);
+      }
+      if (trx.related_entity_type === 'expenses' && trx.linkedData) {
+        return this.openModal('expense', trx.linkedData);
+      }
+      if (trx.reference_no && trx.reference_no.startsWith('REC-DON-')) {
+        let don = (this.state.donations || []).find(d => d.receipt_number === trx.reference_no);
+        if (don) return this.openModal('donation', don);
+      }
+
+      // Otherwise, open standard transaction correction modal
+      const accounts = this.state.accounts || [];
+      const funds = this.state.funds || [];
+      const html = `
+        <form id="modalEditTrxForm" onsubmit="App.handleUpdateTransaction(event, '${trx.id}')">
+          <div class="alert-card info" style="margin-bottom: 14px;">
+            <div><strong>ক্যাশবুক লেনদেন আইডি:</strong> ${trx.id} (${trx.type})</div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>তারিখ <span class="required">*</span></label>
+              <input type="date" name="date" class="form-control" value="${trx.date}" required>
+            </div>
+            <div class="form-group">
+              <label>পরিমাণ (৳) <span class="required">*</span></label>
+              <input type="number" name="amount" class="form-control" step="0.01" value="${trx.amount}" required>
+            </div>
+            <div class="form-group">
+              <label>হিসাব (Account) <span class="required">*</span></label>
+              <select name="account_id" class="form-control" required>
+                ${accounts.map(a => `<option value="${a.id}" ${trx.account_id == a.id ? 'selected' : ''}>${a.name_bn || a.account_name_bn}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>তহবিল (Fund)</label>
+              <select name="fund_id" class="form-control">
+                <option value="">-- প্রযোজ্য নয় --</option>
+                ${funds.map(f => `<option value="${f.id}" ${trx.fund_id == f.id ? 'selected' : ''}>${f.name_bn}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>বিবরণ <span class="required">*</span></label>
+            <input type="text" name="description_bn" class="form-control" value="${trx.description_bn}" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">💾 লেনদেনের পরিবর্তন সংরক্ষণ করুন</button>
+        </form>
+      `;
+      this.openModal(`✏️ লেনদেন সংশোধন (${trx.id})`, html);
+    } catch (err) {
+      alert('লেনদেনের তথ্য আনতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async handleUpdateTransaction(event, trxId) {
+    event.preventDefault();
+    const form = event.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'সংরক্ষণ হচ্ছে...'; }
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    data.user_id = this.state.user?.id;
+    data.user_name = this.state.user?.full_name_bn;
+
+    try {
+      const res = await API.updateTransaction(trxId, data);
+      alert(res.message || 'লেনদেন সফলভাবে সংশোধন করা হয়েছে।');
+      this.closeModal();
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'cashbook');
+      } else {
+        this.render();
+      }
+    } catch (err) {
+      alert('সংশোধন ব্যর্থ হয়েছে: ' + err.message);
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '💾 লেনদেনের পরিবর্তন সংরক্ষণ করুন'; }
+    }
+  },
+
+  async deleteTransactionConfirm(id, type, amount) {
+    const formattedAmount = (typeof formatBDT === 'function') ? formatBDT(amount) : ('৳ ' + amount);
+    const confirmed = confirm(`⚠️ আপনি কি নিশ্চিতভাবে ক্যাশবুক লেনদেনটি (${id}, পরিমাণ: ${formattedAmount}) মুছে ফেলতে চান?\n\nসংশ্লিষ্ট অনুদান/ব্যয়/ত্রাণ রেকর্ড থাকলে তাও স্বয়ংক্রিয়ভাবে ডিলিট হবে এবং ক্যাশবুক ব্যালেন্স থেকে স্থায়ীভাবে বাদ যাবে।`);
+    if (!confirmed) return;
+
+    try {
+      const res = await API.deleteTransaction(id);
+      alert(res.message || 'লেনদেন সফলভাবে মুছে ফেলা হয়েছে।');
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'cashbook');
+      } else {
+        this.render();
+      }
+    } catch (err) {
+      alert('লেনদেন মুছে ফেলতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async openEditExpenseModal(id) {
+    try {
+      let exp = (this.state.expenses || []).find(e => e.id === id);
+      if (!exp) {
+        const res = await API.getExpense(id);
+        if (res && res.success) exp = res.data;
+      }
+      if (!exp) {
+        alert('ব্যয়ের তথ্য পাওয়া যায়নি।');
+        return;
+      }
+      this.openModal('expense', exp);
+    } catch (err) {
+      alert('ব্যয়ের তথ্য আনতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
+  async deleteExpenseConfirm(id, category, amount) {
+    const formattedAmount = (typeof formatBDT === 'function') ? formatBDT(amount) : ('৳ ' + amount);
+    const confirmed = confirm(`⚠️ আপনি কি নিশ্চিতভাবে এই ব্যয়ের রেকর্ডটি (${id} - ${category}, পরিমাণ: ${formattedAmount}) মুছে ফেলতে চান?\n\nএটি মুছে ফেললে ক্যাশবুকের সংশ্লিষ্ট ট্রানজ্যাকশন এবং একাউন্ট ব্যালেন্স থেকেও বাদ যাবে।`);
+    if (!confirmed) return;
+
+    try {
+      const res = await API.deleteExpense(id);
+      alert(res.message || 'ব্যয়ের রেকর্ড সফলভাবে মুছে ফেলা হয়েছে।');
+      await this.loadInitialData();
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'expenses');
+      } else {
+        this.render();
+      }
+    } catch (err) {
+      alert('ব্যয় মুছে ফেলতে সমস্যা হয়েছে: ' + err.message);
+    }
+  },
+
   async handleRecordRepayment(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
@@ -3039,6 +3273,22 @@ const App = {
     data.user_id = this.state.user?.id;
     data.user_name = this.state.user?.full_name_bn;
     data.entered_by = this.state.user?.full_name_bn;
+
+    // Edit / Correction Mode
+    if (data.id) {
+      try {
+        const res = await API.updateExpense(data.id, data);
+        alert(res.message || '✅ ব্যয় সফলভাবে সংশোধন করা হয়েছে!');
+        this.closeModal();
+        await this.loadInitialData();
+        if (this.state.currentView === 'admin') {
+          await this.navigateAdmin(this.state.adminView || 'expenses');
+        }
+      } catch (err) {
+        alert(`সংশোধন ব্যর্থ হয়েছে: ${err.message}`);
+      }
+      return;
+    }
 
     try {
       const res = await API.createExpense(data);
