@@ -37,9 +37,13 @@ const API = {
   // Auth
   login: (credentials) => API.request('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
 
-  // Settings
+  // Settings & System Persistence
   getSettings: () => API.request('/api/settings'),
   updateSettings: (settings) => API.request('/api/settings', { method: 'PUT', body: JSON.stringify(settings) }),
+  getStorageStatus: () => API.request('/api/system/storage-status'),
+  getLiveVersion: () => API.request('/api/system/live-version'),
+  getNetworkInfo: () => API.request('/api/system/network-info'),
+  startTunnel: () => API.request('/api/system/start-tunnel', { method: 'POST' }),
 
   // Public
   getPublicSummary: () => API.request('/api/public/summary'),

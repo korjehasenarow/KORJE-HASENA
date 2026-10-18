@@ -5,9 +5,19 @@ const AdminViews = {
   renderDonors(donors = []) {
     return `
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">👥 সম্মানিত দাতা ও শুভাকাঙ্ক্ষী ব্যবস্থাপনা</div>
-          <button class="btn btn-primary btn-sm" onclick="App.openModal('donor')">➕ নতুন দাতা যোগ করুন</button>
+        <div class="card-header" style="flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;">
+          <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>👥</span> সম্মানিত দাতা ও শুভাকাঙ্ক্ষী ব্যবস্থাপনা
+            <span class="badge" style="background: #e8f5e9; color: #1b5e20; border: 1px solid #81c784; padding: 4px 10px; border-radius: 20px; font-size: 0.76rem; display: inline-flex; align-items: center; gap: 5px;">
+              <span style="width: 7px; height: 7px; background: #2e7d32; border-radius: 50%; display: inline-block;"></span> লাইভ সিঙ্ক সক্রিয়
+            </span>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-outline-green btn-sm" onclick="App.showMobileConnectModal()" style="display: inline-flex; align-items: center; gap: 5px;">
+              <span>📱</span> মোবাইল সংযোগ
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="App.openModal('donor')">➕ নতুন দাতা যোগ করুন</button>
+          </div>
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
           <input type="text" id="donorSearchInput" class="form-control" style="max-width: 280px;" placeholder="নাম, আইডি বা মোবাইল দিয়ে খুঁজুন..." onkeyup="App.filterDonors()">
@@ -997,6 +1007,9 @@ const AdminViews = {
           </div>
           ${isSuperAdmin ? `
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-outline-green btn-sm" onclick="App.showMobileConnectModal()" style="display: inline-flex; align-items: center; gap: 4px;">
+                <span>📱</span> মোবাইল সংযোগ
+              </button>
               <button class="btn btn-primary btn-sm" onclick="App.openModal('committee_member', { committee_type: 'পরিচালনা পরিষদ', display_order: ${nextExecOrder} })" style="display: inline-flex; align-items: center; gap: 6px;">
                 ➕ নতুন পরিচালনা পরিষদ সদস্য যোগ করুন (২১+)
               </button>
@@ -1170,6 +1183,9 @@ const AdminViews = {
           </div>
           ${isSuperAdmin ? `
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-outline-green btn-sm" onclick="App.showMobileConnectModal()" style="display: inline-flex; align-items: center; gap: 4px;">
+                <span>📱</span> মোবাইল সংযোগ
+              </button>
               <button class="btn btn-gold btn-sm" onclick="App.openModal('committee_member', { committee_type: 'উপদেষ্টা পরিষদ', display_order: ${nextAdvOrder} })" style="display: inline-flex; align-items: center; gap: 6px;">
                 ➕ নতুন উপদেষ্টা যোগ করুন
               </button>

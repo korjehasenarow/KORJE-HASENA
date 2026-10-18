@@ -3760,6 +3760,47 @@ const Components = {
         </div>
       </div>
 
+      <!-- Cloud Storage & Database Persistence Banner -->
+      ${(() => {
+        const storage = (typeof App !== 'undefined' && App.state && App.state.storageStatus) || {};
+        if (storage.isCloudPersisted) {
+          return `
+            <div style="background: linear-gradient(135deg, #e8f5e9, #f1f8e9); border: 1px solid #81c784; border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.3rem;">🛡️</span>
+                <div>
+                  <div style="font-weight: 700; color: #1b5e20; font-size: 0.95rem;">ক্লাউড ডেটাবেজ স্থায়ীভাবে সংযুক্ত ও নিরাপদ (Cloud Persistent Storage Active)</div>
+                  <div style="font-size: 0.8rem; color: #2e7d32;">সকল দাতা, উপদেষ্টা, ঋণ ও লেনদেনের তথ্য স্বয়ংক্রিয়ভাবে ক্লাউড ডেটাবেজে সংরক্ষিত হচ্ছে। সার্ভার রিস্টার্ট হলেও কোনো ডেটা মুছবে না।</div>
+                </div>
+              </div>
+              <span class="badge" style="background: #2e7d32; color: #fff; padding: 4px 10px; font-size: 0.78rem; border-radius: 20px;">✓ PostgreSQL লাইভ সিঙ্ক</span>
+            </div>
+          `;
+        } else {
+          return `
+            <div style="background: linear-gradient(135deg, #fff3e0, #fff8e1); border: 1px solid #ffb74d; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.4rem;">⚠️</span>
+                <div>
+                  <div style="font-weight: 700; color: #b75300; font-size: 0.95rem;">ক্লাউড ব্যাকআপ নোটিশ: লোকাল স্টোরেজ মোড সক্রিয়</div>
+                  <div style="font-size: 0.82rem; color: #6d3a00; margin-top: 2px;">
+                    Render ফ্রি ক্লাউড সার্ভারে কোনো এন্ট্রি যাতে না হারায়, সেজন্য <strong>DATABASE_URL</strong> যুক্ত করে স্থায়ী ক্লাউড ডেটাবেজ সক্রিয় করুন। ব্রাউজারে স্বয়ংক্রিয় ব্যাকআপ ক্যাশ চালু রয়েছে।
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-sm btn-outline-gold" onclick="App.checkAndRestoreLocalData()" style="font-size: 0.8rem; font-weight: 600;">
+                  🔄 ব্রাউজার ক্যাশ চেক / রিস্টোর
+                </button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="App.showCloudSetupGuideModal()" style="font-size: 0.8rem; font-weight: 600;">
+                  ⚡ ক্লাউড কানেক্ট গাইড
+                </button>
+              </div>
+            </div>
+          `;
+        }
+      })()}
+
       <!-- Prominent Red Warning Area for Overdue Loans (Mandatory Prompt Feature) -->
       ${stats.overdueCount > 0 ? `
         <div class="alert-card danger" style="border-width: 2px;">

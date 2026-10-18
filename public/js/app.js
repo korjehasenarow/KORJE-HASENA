@@ -43,17 +43,19 @@ const App = {
         this.state.committee = comRes.data || [];
       }
 
-      // Preload donors, funds, accounts and loans
-      const [donorsRes, fundsRes, accountsRes, loansRes] = await Promise.all([
+      // Preload donors, funds, accounts, loans and storage status
+      const [donorsRes, fundsRes, accountsRes, loansRes, storageRes] = await Promise.all([
         API.getDonors().catch(() => ({ success: false })),
         API.getFunds().catch(() => ({ success: false })),
         API.getAccounts().catch(() => ({ success: false })),
-        API.getLoans().catch(() => ({ success: false }))
+        API.getLoans().catch(() => ({ success: false })),
+        API.getStorageStatus().catch(() => ({ success: false }))
       ]);
       if (donorsRes && donorsRes.success) this.state.donors = donorsRes.data || [];
       if (fundsRes && fundsRes.success) this.state.funds = fundsRes.data || [];
       if (accountsRes && accountsRes.success) this.state.accounts = accountsRes.data || [];
       if (loansRes && loansRes.success) this.state.loans = loansRes.data || [];
+      if (storageRes && storageRes.success) this.state.storageStatus = storageRes.data || {};
 
       // 3. Check saved user session
       const savedUser = localStorage.getItem('kh_user');
@@ -68,7 +70,10 @@ const App = {
       // 4. Render initial view
       this.navigate('home');
 
-      // 5. Run scheduled notification check
+      // 5. Start real-time multi-device live sync
+      this.initLiveSync();
+
+      // 6. Run scheduled notification check
       API.runReminderCheck().catch(() => {});
 
       // 6. Global click listener to close dropdown sub-menus & mobile menu on outside click
@@ -1199,6 +1204,27 @@ const App = {
 
     try {
       const res = await API.createDonor(formData);
+
+      // Resilient local caching: protect data from cloud server sleep/restart
+      try {
+        const cachedDonors = JSON.parse(localStorage.getItem('kh_client_cached_donors') || '[]');
+        cachedDonors.unshift({
+          id: res.donorId,
+          name_bn: donorName,
+          name_en: formData.get('name_en') || '',
+          mobile: mobile,
+          whatsapp: formData.get('whatsapp') || mobile,
+          email: formData.get('email') || '',
+          address: formData.get('address') || '',
+          category: formData.get('category') || 'এককালীন দাতা',
+          frequency: formData.get('frequency') || 'এককালীন',
+          commitment_amount: commitmentAmount,
+          photo_url: res.photoUrl || '',
+          savedAt: Date.now()
+        });
+        localStorage.setItem('kh_client_cached_donors', JSON.stringify(cachedDonors.slice(0, 30)));
+      } catch (cacheErr) {}
+
       await this.loadInitialData(); // Load newly registered donor into state immediately!
 
       this.closeModal();
@@ -1561,6 +1587,26 @@ const App = {
       } else {
         await API.addCommitteeMember(formData);
         alert(`✓ পরিচালনা পরিষদে নতুন সদস্য "${memberName}" সফলভাবে যুক্ত হয়েছে!`);
+
+        // Resilient local caching: protect data from cloud server sleep/restart
+        try {
+          const cachedCom = JSON.parse(localStorage.getItem('kh_client_cached_committee') || '[]');
+          cachedCom.unshift({
+            name_bn: memberName,
+            name_en: formData.get('name_en') || '',
+            designation_bn: formData.get('designation_bn') || '',
+            mobile: formData.get('mobile') || '',
+            whatsapp: formData.get('whatsapp') || '',
+            address: formData.get('address') || '',
+            profession: formData.get('profession') || '',
+            committee_type: formData.get('committee_type') || 'পরিচালনা পরিষদ',
+            email: formData.get('email') || '',
+            bio_bn: formData.get('bio_bn') || '',
+            display_order: formData.get('display_order') || 10,
+            savedAt: Date.now()
+          });
+          localStorage.setItem('kh_client_cached_committee', JSON.stringify(cachedCom.slice(0, 30)));
+        } catch (cacheErr) {}
       }
       this.closeModal();
       await this.loadInitialData();
@@ -3583,6 +3629,355 @@ const App = {
         row.style.display = 'none';
       }
     });
+  },
+
+  // Check and restore data from client cache if cloud server reset occurs
+  async checkAndRestoreLocalData() {
+    try {
+      const cachedDonors = JSON.parse(localStorage.getItem('kh_client_cached_donors') || '[]');
+      const cachedCommittee = JSON.parse(localStorage.getItem('kh_client_cached_committee') || '[]');
+
+      const currentDonors = this.state.donors || [];
+      const currentCommittee = this.state.committee || [];
+
+      // Find missing donors
+      const missingDonors = cachedDonors.filter(cd => !currentDonors.some(d => d.name_bn === cd.name_bn || d.mobile === cd.mobile));
+      // Find missing committee members
+      const missingCom = cachedCommittee.filter(cc => !currentCommittee.some(c => c.name_bn === cc.name_bn));
+
+      if (missingDonors.length === 0 && missingCom.length === 0) {
+        alert('✓ আপনার ব্রাউজারে সংরক্ষিত সকল দাতা ও উপদেষ্টা ডেটা বর্তমান সার্ভার ডেটাবেজের সাথে সম্পূর্ণভাবে মিলে গেছে! কোনো ডেটা হারায়নি।');
+        return;
+      }
+
+      const confirmRestore = confirm(`চিহ্নিত করা হয়েছে:\n• ${missingDonors.length} জন অনুপস্থিত দাতা\n• ${missingCom.length} জন অনুপস্থিত উপদেষ্টা/কমিটি সদস্য\n\nআপনি কি এই ডেটাগুলো এখনই সার্ভারে পুনরায় সংরক্ষণ (Auto-Restore) করতে চান?`);
+      if (!confirmRestore) return;
+
+      let restoredCount = 0;
+      for (const d of missingDonors) {
+        try {
+          await API.createDonor(d);
+          restoredCount++;
+        } catch (e) {
+          console.error('Error restoring donor:', e);
+        }
+      }
+
+      for (const c of missingCom) {
+        try {
+          const fd = new FormData();
+          Object.keys(c).forEach(k => { if (k !== 'savedAt') fd.append(k, c[k]); });
+          fd.append('user_role', 'superadmin');
+          await API.addCommitteeMember(fd);
+          restoredCount++;
+        } catch (e) {
+          console.error('Error restoring committee member:', e);
+        }
+      }
+
+      await this.loadInitialData();
+      alert(`✓ সফলভাবে ${restoredCount}টি ডেটা রেকর্ড সার্ভারে রিস্টোর করা হয়েছে!`);
+      if (this.state.currentView === 'admin') {
+        await this.navigateAdmin(this.state.adminView || 'dashboard');
+      }
+    } catch (err) {
+      alert(`রিস্টোর ত্রুটি: ${err.message}`);
+    }
+  },
+
+  showCloudSetupGuideModal() {
+    const modal = document.getElementById('globalModal');
+    const modalContent = document.getElementById('globalModalContent');
+    if (!modal || !modalContent) return;
+
+    modalContent.innerHTML = `
+      <div style="padding: 10px;">
+        <h3 style="color: var(--primary-deep-green); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <span>⚡</span> Render-এ আজীবনের জন্য ফ্রি ডেটাবেজ (PostgreSQL) কানেক্ট করার নিয়ম
+        </h3>
+        <p style="font-size: 0.9rem; line-height: 1.6; color: #444; margin-bottom: 16px;">
+          Render ফ্রি প্ল্যানে ওয়েব সার্ভিসগুলো ১৫ মিনিট নিষ্ক্রিয় থাকলে স্লিপে যায় এবং টেম্পোরারি ফাইল রিসেট হয়। 
+          নিচের সহজ ৩টি ধাপে মাত্র ২ মিনিটে সম্পূর্ণ ফ্রি ক্লাউড ডেটাবেজ যুক্ত করলে <strong>আজীবন কোনো ডেটা মুছবে না</strong>:
+        </p>
+        
+        <div style="background: #f8faf9; border: 1px solid #d2e4db; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+          <h4 style="color: var(--primary-deep-green); margin-bottom: 6px; font-size: 0.95rem;">
+            পদ্ধতি ১: Render ড্যাশবোর্ড থেকে ১-ক্লিকে (সবচেয়ে সহজ)
+          </h4>
+          <ol style="margin-left: 20px; font-size: 0.88rem; line-height: 1.7; color: #333;">
+            <li>আপনার <a href="https://dashboard.render.com" target="_blank" style="color: #0d6efd; font-weight: 600;">Render Dashboard</a>-এ যান।</li>
+            <li>উপরে ডানদিকের <strong>"New +"</strong> বাটনে ক্লিক করে <strong>"PostgreSQL"</strong> সিলেক্ট করুন।</li>
+            <li>নাম দিন: <code>korje-hasena-db</code> এবং Plan হিসেবে <strong>Free</strong> সিলেক্ট করে <strong>"Create Database"</strong> দিন।</li>
+            <li>ডাটাবেজ তৈরি হলে <strong>"Internal Database URL"</strong> টি কপি করুন।</li>
+            <li>এবার আপনার ওয়েব সার্ভিসের <strong>"Environment"</strong> মেনুতে গিয়ে <strong>Key:</strong> <code>DATABASE_URL</code> এবং <strong>Value:</strong> হিসেবে লিংকটি পেস্ট করে <strong>"Save Changes"</strong> দিন।</li>
+          </ol>
+        </div>
+
+        <div style="background: #fdfbf7; border: 1px solid #fae8c8; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <h4 style="color: #8c6e14; margin-bottom: 6px; font-size: 0.95rem;">
+            পদ্ধতি ২: Neon.tech ক্লাউড ডেটাবেজ (কখনো মেয়াদ শেষ হয় না)
+          </h4>
+          <ol style="margin-left: 20px; font-size: 0.88rem; line-height: 1.7; color: #333;">
+            <li><a href="https://neon.tech" target="_blank" style="color: #0d6efd; font-weight: 600;">Neon.tech</a>-এ গিয়ে ফ্রিতে অ্যাকাউন্ট খুলুন।</li>
+            <li>প্রজেক্ট তৈরি করে কানেকশন স্ট্রিং (<code>postgres://...</code>) কপি করুন।</li>
+            <li>Render-এর Environment Variables-এ <code>DATABASE_URL</code> হিসেবে পেস্ট করুন।</li>
+          </ol>
+        </div>
+
+        <div style="text-align: right;">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">ঠিক আছে, বুঝেছি</button>
+        </div>
+      </div>
+    `;
+    modal.classList.add('open');
+  },
+
+  // Real-Time Multi-Device Live Sync Engine
+  initLiveSync() {
+    this.state.localDataVersion = 0;
+    this.state.isLiveSyncing = false;
+
+    // Fetch initial server data version
+    API.getLiveVersion().then(res => {
+      if (res && res.version) this.state.localDataVersion = res.version;
+    }).catch(() => {});
+
+    // Poll every 2.5 seconds for instant updates from any device (mobile/laptop)
+    if (this._liveSyncInterval) clearInterval(this._liveSyncInterval);
+    this._liveSyncInterval = setInterval(() => this.checkRealTimeSync(), 2500);
+  },
+
+  async checkRealTimeSync() {
+    if (this.state.isLiveSyncing) return;
+    try {
+      const res = await API.getLiveVersion().catch(() => null);
+      if (!res || !res.version) return;
+
+      if (this.state.localDataVersion === 0) {
+        this.state.localDataVersion = res.version;
+        return;
+      }
+
+      // If server version is higher, another device made an entry!
+      if (res.version > this.state.localDataVersion) {
+        this.state.isLiveSyncing = true;
+        this.state.localDataVersion = res.version;
+
+        console.log(`[LIVE-SYNC] Database updated on another device! Syncing automatically...`);
+
+        // Fetch latest data silently
+        const [sumRes, comRes, donorsRes, statsRes] = await Promise.all([
+          API.getPublicSummary().catch(() => ({ success: false })),
+          API.getCommittee().catch(() => ({ success: false })),
+          API.getDonors().catch(() => ({ success: false })),
+          (this.state.user ? API.getDashboardStats().catch(() => ({ success: false })) : Promise.resolve({ success: false }))
+        ]);
+
+        if (sumRes && sumRes.success) this.state.summary = sumRes.data;
+        if (comRes && comRes.success) this.state.committee = comRes.data || [];
+        if (donorsRes && donorsRes.success) this.state.donors = donorsRes.data || [];
+        if (statsRes && statsRes.success) this.state.stats = statsRes.data || {};
+
+        // Update visible view smoothly
+        this.updateCurrentViewOnLiveSync();
+
+        // Show subtle notification toast
+        this.showLiveSyncToast('🔔 লাইভ সিঙ্ক: অন্য ডিভাইস থেকে নতুন তথ্য যুক্ত হয়েছে!');
+      }
+    } catch (err) {
+      console.warn('[LIVE-SYNC ERROR]', err);
+    } finally {
+      this.state.isLiveSyncing = false;
+    }
+  },
+
+  updateCurrentViewOnLiveSync() {
+    try {
+      const modal = document.getElementById('globalModal');
+      const isModalOpen = modal && modal.classList.contains('open');
+
+      if (this.state.currentView === 'home') {
+        const featSection = document.getElementById('featuredDonorsSection');
+        if (featSection) {
+          const newHtml = Components.renderPublicHome(this.state.org, this.state.summary);
+          const temp = document.createElement('div');
+          temp.innerHTML = newHtml;
+          const newFeat = temp.querySelector('#featuredDonorsSection');
+          if (newFeat) featSection.replaceWith(newFeat);
+        }
+      } else if (this.state.currentView === 'committee') {
+        const main = document.getElementById('mainContent');
+        if (main && !isModalOpen) {
+          main.innerHTML = Components.renderCommitteePage(this.state.committee);
+        }
+      } else if (this.state.currentView === 'admin') {
+        const adminArea = document.getElementById('adminContentArea');
+        if (adminArea && !isModalOpen) {
+          if (this.state.adminView === 'donors') {
+            adminArea.innerHTML = AdminViews.renderDonors(this.state.donors);
+          } else if (this.state.adminView === 'committee') {
+            adminArea.innerHTML = AdminViews.renderCommittee(this.state.committee);
+          } else if (this.state.adminView === 'advisors') {
+            adminArea.innerHTML = AdminViews.renderAdvisors(this.state.committee);
+          } else if (this.state.adminView === 'dashboard') {
+            adminArea.innerHTML = Components.renderAdminDashboard(this.state.stats, this.state.org);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[LIVE-SYNC VIEW UPDATE ERROR]', err);
+    }
+  },
+
+  showLiveSyncToast(msg) {
+    let toast = document.getElementById('khLiveSyncToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'khLiveSyncToast';
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: #075B3B;
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 30px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        opacity: 0;
+        transform: translateY(20px);
+      `;
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = msg;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(20px)';
+    }, 3500);
+  },
+
+  // Mobile Connect & QR Code Modal
+  async showMobileConnectModal() {
+    const modal = document.getElementById('globalModal');
+    const modalContent = document.getElementById('globalModalContent');
+    if (!modal || !modalContent) return;
+
+    modalContent.innerHTML = `<div style="text-align: center; padding: 30px;"><div class="spinner"></div><p style="margin-top: 10px;">মোবাইল সংযোগ তথ্য লোড হচ্ছে...</p></div>`;
+    modal.classList.add('open');
+
+    const netRes = await API.getNetworkInfo().catch(() => ({ success: false }));
+    const net = (netRes && netRes.success) ? netRes : { wifiUrl: `http://${window.location.hostname}:3000`, localhostUrl: 'http://localhost:3000' };
+
+    const currentUrl = window.location.href.split('#')[0];
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    // Choose best mobile URL
+    const mobileTargetUrl = isLocalhost ? (net.tunnelUrl || net.wifiUrl) : currentUrl;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileTargetUrl)}`;
+
+    modalContent.innerHTML = `
+      <div style="padding: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 16px;">
+          <h3 style="color: var(--primary-deep-green); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span>📱</span> মোবাইল ও ল্যাপটপ লাইভ সংযোগ (Multi-Device Live Sync)
+          </h3>
+          <button type="button" class="close-btn" onclick="App.closeModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div style="background: #e8f5e9; border: 1px solid #81c784; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.88rem; color: #1b5e20;">
+          🟢 <strong>লাইভ সিঙ্ক সক্রিয়:</strong> মোবাইল থেকে এন্ট্রি দিলে ল্যাপটপে এবং ল্যাপটপ থেকে এন্ট্রি দিলে মোবাইলে <strong>স্বয়ংক্রিয়ভাবে ২ সেকেন্ডের মধ্যে ভেসে উঠবে</strong> (কোনো রিলোড ছাড়াই)।
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; align-items: center;">
+          <div style="text-align: center; background: #fafafa; border: 1px dashed #ccc; border-radius: 12px; padding: 16px;">
+            <div style="font-weight: 700; color: #333; margin-bottom: 8px; font-size: 0.95rem;">
+              📸 মোবাইলের ক্যামেরা দিয়ে স্ক্যান করুন:
+            </div>
+            <img src="${qrUrl}" alt="QR Code" style="width: 190px; height: 190px; border-radius: 8px; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: 0 auto; display: block;" onerror="this.style.display='none';">
+            <div style="font-size: 0.78rem; color: #666; margin-top: 8px;">
+              ক্যামেরা অন করে এই QR কোডটি ধরলেই মোবাইলে পেজটি সাথে সাথে খুলে যাবে।
+            </div>
+          </div>
+
+          <div>
+            <div style="margin-bottom: 16px;">
+              <label style="font-size: 0.85rem; font-weight: 700; color: #333; display: block; margin-bottom: 4px;">
+                🔗 মোবাইলের ব্রাউজারে টাইপ করার লিংক:
+              </label>
+              <div style="display: flex; gap: 6px;">
+                <input type="text" id="mobileShareUrlInput" class="form-control" value="${mobileTargetUrl}" readonly style="font-family: monospace; font-size: 0.85rem; background: #fdfdfd; font-weight: bold; color: #075B3B;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="App.copyMobileLink()" style="white-space: nowrap;">কপি করুন</button>
+              </div>
+              <div style="font-size: 0.8rem; color: #666; margin-top: 4px;">
+                ${isLocalhost ? '💡 একই ওয়াইফাই রাউটারে যুক্ত থাকলে এই লিংক দিয়ে সরাসরি মোবাইল থেকে প্রবেশ করা যাবে।' : '🌐 আপনার লাইভ পাবলিশ করা ক্লাউড ওয়েবসাইট লিংক।'}
+              </div>
+            </div>
+
+            ${isLocalhost && !net.tunnelUrl ? `
+              <div style="background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 10px; margin-top: 10px;">
+                <div style="font-size: 0.84rem; font-weight: 700; color: #8c6e14;">ওয়াইফাই ছাড়া যেকোনো ইন্টারনেট থেকে সংযোগ:</div>
+                <div style="font-size: 0.78rem; color: #6d5400; margin-top: 2px;">
+                  ল্যাপটপ ও মোবাইল যদি আলাদা নেটে থাকে, তবে ১-ক্লিকে অনলাইন টানেল চালু করতে পারেন।
+                </div>
+                <button type="button" class="btn btn-sm btn-gold" onclick="App.startOnlineTunnelAction()" style="margin-top: 8px; width: 100%;">
+                  🌐 ১-ক্লিকে অনলাইন টানেল চালু করুন
+                </button>
+              </div>
+            ` : ''}
+
+            ${net.tunnelUrl ? `
+              <div style="background: #e1f5fe; border: 1px solid #81d4fa; border-radius: 8px; padding: 10px; margin-top: 10px;">
+                <div style="font-size: 0.84rem; font-weight: 700; color: #0277bd;">✓ অনলাইন টানেল সক্রিয়:</div>
+                <div style="font-size: 0.8rem; color: #01579b; word-break: break-all; font-family: monospace;">
+                  ${net.tunnelUrl}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <div style="text-align: right; margin-top: 20px; border-top: 1px solid #eee; padding-top: 12px;">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">বন্ধ করুন</button>
+        </div>
+      </div>
+    `;
+  },
+
+  copyMobileLink() {
+    const input = document.getElementById('mobileShareUrlInput');
+    if (input) {
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        alert('✓ মোবাইল লিংক কপি করা হয়েছে: ' + input.value);
+      }).catch(() => {
+        alert('লিংকটি সিলেক্ট করুন: ' + input.value);
+      });
+    }
+  },
+
+  async startOnlineTunnelAction() {
+    try {
+      const btn = event.target;
+      if (btn) { btn.disabled = true; btn.textContent = 'টানেল চালু হচ্ছে...'; }
+      const res = await API.startTunnel();
+      if (res.success && res.url) {
+        alert('✓ অনলাইন টানেল সফলভাবে চালু হয়েছে!\nURL: ' + res.url);
+        this.showMobileConnectModal();
+      } else {
+        alert('টানেল শুরু করা যায়নি: ' + (res.message || 'ত্রুটি'));
+      }
+    } catch (e) {
+      alert('টানেল ত্রুটি: ' + e.message);
+    }
   }
 };
 
